@@ -7,7 +7,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="350dp"
+        android:layout_height="wrap_content"
         android:background="@drawable/background_gradient"
         android:gravity="center"
         android:orientation="vertical"
@@ -16,7 +16,7 @@
 
         <ImageView
             android:layout_width="wrap_content"
-            android:layout_height="200dp"
+            android:layout_height="180dp"
             android:src="@drawable/white_logo_w_text_no_bg"
             />
 
@@ -35,19 +35,33 @@
             android:text="Sign In"
             android:textAllCaps="false"
             android:textSize="16sp"
-            android:textColor="@color/white"
-            android:background="@drawable/button_rounded"
+            android:textColor="#5B21B6"
+            android:background="@drawable/white_button"
             android:elevation="6dp"
             android:layout_marginBottom="20dp"
-            android:layout_marginTop="20dp"/>
+            android:layout_marginTop="20dp"
+            android:textStyle="bold"/>
 
+        <Button
+            android:id="@+id/btnCreateAccount"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginBottom="15dp"
+            android:background="@drawable/transparent_rounded"
+            android:elevation="6dp"
+            android:text="Create Account"
+            android:textAllCaps="false"
+            android:textColor="#FFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="25dp">
+        android:paddingHorizontal="25dp"
+        android:paddingVertical="20dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -132,19 +146,7 @@
 
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btnCreateAccount"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="24dp"
-            android:background="@drawable/button_rounded"
-            android:elevation="6dp"
-            android:text="Create Account"
-            android:textAllCaps="false"
-            android:textColor="#FFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="50dp"/>
+
 
     </LinearLayout>
 
