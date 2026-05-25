@@ -27,6 +27,9 @@ public class UserProfile extends BaseEntity {
 
     private String phoneNumber;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AccountRole role = AccountRole.ATTENDEE;

@@ -3,6 +3,7 @@ package com.thedavelopers.eventqr.features.users.service;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,22 +22,27 @@ import com.thedavelopers.eventqr.shared.port.AttendeeDirectoryPort.AttendeeSnaps
 @Transactional
 public class UserService implements AttendeeDirectoryPort {
 
-    private final UserProfileRepository userProfileRepository;
+    private static final String UNUSABLE_HASH_PREFIX = "{UNUSABLE}";
 
-    public UserService(UserProfileRepository userProfileRepository) {
+    private final UserProfileRepository userProfileRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserProfileRepository userProfileRepository, PasswordEncoder passwordEncoder) {
         this.userProfileRepository = userProfileRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserResponse create(UserRequest request) {
-        if (userProfileRepository.findByEmailIgnoreCase(request.email()).isPresent()) {
+        UserProfile userProfile = userProfileRepository.findByEmailIgnoreCase(request.email()).orElseGet(UserProfile::new);
+        if (hasRealPassword(userProfile)) {
             throw new ConflictException("User already exists for email " + request.email());
         }
-        UserProfile userProfile = new UserProfile();
         userProfile.setEmail(request.email().trim().toLowerCase());
         userProfile.setFullName(request.fullName().trim());
         userProfile.setPhoneNumber(request.phoneNumber());
         userProfile.setRole(request.role());
         userProfile.setStatus(AccountStatus.ACTIVE);
+        userProfile.setPasswordHash(passwordEncoder.encode(request.password()));
         return toResponse(userProfileRepository.save(userProfile));
     }
 
@@ -61,8 +67,13 @@ public class UserService implements AttendeeDirectoryPort {
                     created.setPhoneNumber(phoneNumber);
                     created.setRole(role);
                     created.setStatus(AccountStatus.ACTIVE);
+                    created.setPasswordHash(createUnusablePasswordHash());
                     return userProfileRepository.save(created);
                 });
+        if (userProfile.getPasswordHash() == null || userProfile.getPasswordHash().isBlank()) {
+            userProfile.setPasswordHash(createUnusablePasswordHash());
+            userProfileRepository.save(userProfile);
+        }
         return userProfile.toSnapshot();
     }
 
@@ -92,5 +103,15 @@ public class UserService implements AttendeeDirectoryPort {
     private UserResponse toResponse(UserProfile userProfile) {
         return new UserResponse(userProfile.getId(), userProfile.getEmail(), userProfile.getFullName(),
                 userProfile.getPhoneNumber(), userProfile.getRole(), userProfile.getStatus());
+    }
+
+    private boolean hasRealPassword(UserProfile userProfile) {
+        return userProfile.getPasswordHash() != null
+                && !userProfile.getPasswordHash().isBlank()
+                && !userProfile.getPasswordHash().startsWith(UNUSABLE_HASH_PREFIX);
+    }
+
+    private String createUnusablePasswordHash() {
+        return UNUSABLE_HASH_PREFIX + passwordEncoder.encode(UUID.randomUUID().toString());
     }
 }

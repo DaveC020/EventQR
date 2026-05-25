@@ -6,7 +6,7 @@ object Validators {
     }
 
     fun isValidPassword(value: String): Boolean {
-        return value.trim().length >= 6
+        return value.trim().length >= 8
     }
 
     fun isValidPhoneNumber(value: String): Boolean {

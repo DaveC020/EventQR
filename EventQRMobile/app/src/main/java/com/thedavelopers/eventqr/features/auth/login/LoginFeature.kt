@@ -69,7 +69,7 @@ class LoginPresenter(
 
         view?.showLoading(true)
         loginJob = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.login(emailValue)) {
+            when (val result = repository.login(emailValue, passwordValue)) {
                 is NetworkResult.Success -> {
                     val loginResponse = result.data
                     repository.storeSession(loginResponse)

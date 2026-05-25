@@ -9,7 +9,7 @@ class SessionManager(context: Context) {
 
     fun saveLoginResponse(loginResponse: LoginResponse) {
         sharedPreferences.edit()
-            .putString(KEY_AUTH_TOKEN, loginResponse.accessToken.ifBlank { PLACEHOLDER_TOKEN })
+            .putString(KEY_AUTH_TOKEN, loginResponse.accessToken)
             .putString(KEY_USER_ID, loginResponse.userId.toString())
             .putString(KEY_EMAIL, loginResponse.email)
             .putString(KEY_FULL_NAME, loginResponse.fullName)
@@ -36,13 +36,11 @@ class SessionManager(context: Context) {
     fun getFullName(): String? = sharedPreferences.getString(KEY_FULL_NAME, null)
 
     fun hasUsableToken(): Boolean {
-        val token = getAuthToken().orEmpty()
-        return token.isNotBlank() && token != PLACEHOLDER_TOKEN
+        return getAuthToken().orEmpty().isNotBlank()
     }
 
     companion object {
         const val PREFS_NAME = "eventqr_session"
-        const val PLACEHOLDER_TOKEN = "JWT_NOT_CONFIGURED"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_ROLE = "role"

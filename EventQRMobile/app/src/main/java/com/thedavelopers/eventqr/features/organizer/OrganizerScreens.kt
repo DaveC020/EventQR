@@ -255,6 +255,7 @@ open class ManageUsersActivity : AppCompatActivity(), ManageUsersContract.View {
             email = findViewById<EditText>(R.id.edtUserEmail).text.toString(),
             fullName = findViewById<EditText>(R.id.edtUserFullName).text.toString(),
             phoneNumber = findViewById<EditText>(R.id.edtUserPhone).text.toString().ifBlank { null },
+            password = findViewById<EditText>(R.id.edtUserPassword).text.toString(),
             role = AccountRole.valueOf(roleSpinner.selectedItem.toString()),
         )
     }
