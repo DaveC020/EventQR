@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 class Registration : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_regisgtration)
+        setContentView(R.layout.activity_registration)
 
         val etFirstName = findViewById<EditText>(R.id.etFirstName)
         val etMiddleInitial = findViewById<EditText>(R.id.etMiddleInitial)

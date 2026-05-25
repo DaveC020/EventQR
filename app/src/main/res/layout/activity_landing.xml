@@ -35,7 +35,7 @@
             android:text="Sign In"
             android:textAllCaps="false"
             android:textSize="16sp"
-            android:textColor="#5B21B6"
+            android:textColor="#28286a"
             android:background="@drawable/white_button"
             android:elevation="6dp"
             android:layout_marginBottom="20dp"
