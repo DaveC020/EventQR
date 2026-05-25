@@ -11,7 +11,7 @@ class AuthInterceptor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val requestBuilder = chain.request().newBuilder()
         val token = sessionManager.getAuthToken()
-        if (!token.isNullOrBlank() && token != SessionManager.PLACEHOLDER_TOKEN) {
+        if (!token.isNullOrBlank()) {
             requestBuilder.addHeader("Authorization", "Bearer $token")
         }
         return chain.proceed(requestBuilder.build())
