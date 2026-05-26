@@ -11,6 +11,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.SignIn
@@ -80,7 +81,7 @@ class RegistrationPresenter(
             view?.showFieldError("email", null)
         }
         if (!Validators.isValidPhoneNumber(phoneValue)) {
-            view?.showFieldError("phone", "Enter a valid phone number")
+            view?.showFieldError("phone", "Phone number must start with 63 and be 12 digits long")
             valid = false
         } else {
             view?.showFieldError("phone", null)
@@ -130,12 +131,14 @@ open class RegistrationActivity : AppCompatActivity(), RegistrationContract.View
     private lateinit var passwordInput: EditText
     private lateinit var confirmPasswordInput: EditText
     private lateinit var registerButton: Button
-    private lateinit var signInButton: Button
+    private lateinit var signInButton: android.view.View
     private lateinit var passwordLengthRequirement: TextView
     private lateinit var passwordCapitalRequirement: TextView
     private lateinit var passwordSpecialRequirement: TextView
-    private lateinit var passwordSmallRequirement: TextView
     private lateinit var passwordNumberRequirement: TextView
+    private lateinit var passwordStrengthText: TextView
+    private lateinit var requirementsLayout: android.view.View
+    private lateinit var strengthBars: List<android.view.View>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -155,8 +158,15 @@ open class RegistrationActivity : AppCompatActivity(), RegistrationContract.View
         passwordLengthRequirement = findViewById(R.id.txtPasswordLengthRequirement)
         passwordCapitalRequirement = findViewById(R.id.txtPasswordCapitalRequirement)
         passwordSpecialRequirement = findViewById(R.id.txtPasswordSpecialRequirement)
-        passwordSmallRequirement = findViewById(R.id.txtPasswordSmallRequirement)
         passwordNumberRequirement = findViewById(R.id.txtPasswordNumberRequirement)
+        passwordStrengthText = findViewById(R.id.txtPasswordStrength)
+        requirementsLayout = findViewById(R.id.layoutPasswordRequirements)
+        strengthBars = listOf(
+            findViewById(R.id.viewStrength1),
+            findViewById(R.id.viewStrength2),
+            findViewById(R.id.viewStrength3),
+            findViewById(R.id.viewStrength4)
+        )
 
         configurePasswordToggle(passwordInput)
         configurePasswordToggle(confirmPasswordInput)
@@ -216,28 +226,75 @@ open class RegistrationActivity : AppCompatActivity(), RegistrationContract.View
     }
 
     private fun updatePasswordRequirements(password: String) {
+        if (password.isEmpty()) {
+            requirementsLayout.visibility = android.view.View.GONE
+            registerButton.isEnabled = false
+            return
+        }
+        requirementsLayout.visibility = android.view.View.VISIBLE
+
         val requirements = Validators.passwordRequirements(password)
-        updateRequirement(passwordLengthRequirement, "8 characters long", requirements.hasMinLength)
-        updateRequirement(passwordCapitalRequirement, "1 Capital", requirements.hasCapital)
-        updateRequirement(passwordSpecialRequirement, "1 Special", requirements.hasSpecial)
-        updateRequirement(passwordSmallRequirement, "1 Small", requirements.hasSmall)
-        updateRequirement(passwordNumberRequirement, "1 Number", requirements.hasNumber)
+        updateRequirement(passwordLengthRequirement, "At least 8 characters", requirements.hasMinLength)
+        updateRequirement(passwordCapitalRequirement, "One uppercase letter", requirements.hasCapital)
+        updateRequirement(passwordNumberRequirement, "One number", requirements.hasNumber)
+        updateRequirement(passwordSpecialRequirement, "One special character", requirements.hasSpecial)
+
+        val metCount = listOf(
+            requirements.hasMinLength,
+            requirements.hasCapital,
+            requirements.hasNumber,
+            requirements.hasSpecial
+        ).count { it }
+
+        updateStrengthUI(metCount)
         registerButton.isEnabled = requirements.isValid
     }
 
     private fun updateRequirement(view: TextView, label: String, isMet: Boolean) {
-        view.text = "${if (isMet) "[x]" else "[ ]"} $label"
+        view.text = "${if (isMet) "✓" else "○"} $label"
         view.setTextColor(getColor(if (isMet) R.color.eventqr_success else R.color.eventqr_muted))
+    }
+
+    private fun updateStrengthUI(metCount: Int) {
+        val (colorRes, label) = when (metCount) {
+            0 -> R.color.eventqr_muted to ""
+            1 -> R.color.eventqr_error to "Weak"
+            2 -> R.color.eventqr_warning to "Fair"
+            3 -> R.color.eventqr_info to "Good"
+            4 -> R.color.eventqr_success to "Strong"
+            else -> R.color.eventqr_muted to ""
+        }
+
+        passwordStrengthText.text = label
+        passwordStrengthText.setTextColor(if (metCount > 0) getColor(colorRes) else getColor(R.color.eventqr_muted))
+
+        strengthBars.forEachIndexed { index, view ->
+            view.background.mutate().setTint(
+                if (index < metCount) getColor(colorRes) else getColor(R.color.eventqr_border)
+            )
+        }
     }
 
     private fun configurePasswordToggle(input: EditText) {
         input.setOnTouchListener { view, event ->
             if (event.action == MotionEvent.ACTION_UP && event.rawX >= input.right - input.compoundPaddingEnd) {
-                val isHidden = input.inputType and InputType.TYPE_TEXT_VARIATION_PASSWORD == InputType.TYPE_TEXT_VARIATION_PASSWORD
-                input.inputType = if (isHidden) {
-                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                val isVisible = input.inputType == (InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
+                if (isVisible) {
+                    input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    input.setCompoundDrawablesWithIntrinsicBounds(
+                        input.compoundDrawables[0],
+                        null,
+                        ContextCompat.getDrawable(this, R.drawable.ic_visibility_on),
+                        null
+                    )
                 } else {
-                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                    input.setCompoundDrawablesWithIntrinsicBounds(
+                        input.compoundDrawables[0],
+                        null,
+                        ContextCompat.getDrawable(this, R.drawable.ic_visibility_off),
+                        null
+                    )
                 }
                 input.setSelection(input.text.length)
                 view.performClick()

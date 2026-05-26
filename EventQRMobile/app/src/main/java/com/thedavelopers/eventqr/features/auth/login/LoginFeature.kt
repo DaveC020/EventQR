@@ -9,6 +9,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.thedavelopers.eventqr.Dashboard
 import com.thedavelopers.eventqr.R
@@ -103,7 +104,7 @@ open class LoginActivity : AppCompatActivity(), LoginContract.View {
     private lateinit var emailInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var signInButton: Button
-    private lateinit var registerButton: Button
+    private lateinit var registerButton: android.view.View
     private lateinit var forgotPasswordLink: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -175,11 +176,23 @@ open class LoginActivity : AppCompatActivity(), LoginContract.View {
     private fun configurePasswordToggle(input: EditText) {
         input.setOnTouchListener { view, event ->
             if (event.action == MotionEvent.ACTION_UP && event.rawX >= input.right - input.compoundPaddingEnd) {
-                val isHidden = input.inputType and InputType.TYPE_TEXT_VARIATION_PASSWORD == InputType.TYPE_TEXT_VARIATION_PASSWORD
-                input.inputType = if (isHidden) {
-                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                val isVisible = input.inputType == (InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
+                if (isVisible) {
+                    input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    input.setCompoundDrawablesWithIntrinsicBounds(
+                        input.compoundDrawables[0],
+                        null,
+                        ContextCompat.getDrawable(this, R.drawable.ic_visibility_on),
+                        null
+                    )
                 } else {
-                    InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                    input.setCompoundDrawablesWithIntrinsicBounds(
+                        input.compoundDrawables[0],
+                        null,
+                        ContextCompat.getDrawable(this, R.drawable.ic_visibility_off),
+                        null
+                    )
                 }
                 input.setSelection(input.text.length)
                 view.performClick()

@@ -5,11 +5,10 @@ object Validators {
         val hasMinLength: Boolean,
         val hasCapital: Boolean,
         val hasSpecial: Boolean,
-        val hasSmall: Boolean,
         val hasNumber: Boolean,
     ) {
         val isValid: Boolean
-            get() = hasMinLength && hasCapital && hasSpecial && hasSmall && hasNumber
+            get() = hasMinLength && hasCapital && hasSpecial && hasNumber
     }
 
     fun isValidEmail(value: String): Boolean {
@@ -21,7 +20,8 @@ object Validators {
     }
 
     fun isValidPhoneNumber(value: String): Boolean {
-        return value.trim().length >= 7
+        val cleaned = value.trim()
+        return cleaned.startsWith("63") && cleaned.length == 12 && cleaned.all { it.isDigit() }
     }
 
     fun isNonEmpty(value: String): Boolean {
@@ -33,7 +33,6 @@ object Validators {
             hasMinLength = value.length >= 8,
             hasCapital = value.any { it.isUpperCase() },
             hasSpecial = value.any { !it.isLetterOrDigit() },
-            hasSmall = value.any { it.isLowerCase() },
             hasNumber = value.any { it.isDigit() },
         )
     }
