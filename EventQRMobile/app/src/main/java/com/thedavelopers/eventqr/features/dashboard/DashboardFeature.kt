@@ -17,11 +17,23 @@ import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.DateFormatters
 import com.thedavelopers.eventqr.features.attendee.AttendeeBottomNavItem
+import com.thedavelopers.eventqr.features.attendee.AttendeeRepository
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_CAPACITY
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_COUNT
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_DESCRIPTION
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_END
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_ID
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_LOCATION
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_START
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_STATUS
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_TITLE
 import com.thedavelopers.eventqr.features.attendee.configureAttendeeBottomNav
 import com.thedavelopers.eventqr.features.dashboard.model.dto.DashboardSummary
 import com.thedavelopers.eventqr.features.dashboard.model.dto.DashboardUpcomingEvent
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 interface DashboardContract {
     interface View {
@@ -58,6 +70,7 @@ class DashboardRepository(private val context: android.content.Context) {
 class DashboardPresenter(
     private var view: DashboardContract.View?,
     private val repository: DashboardRepository,
+    private val attendeeRepository: AttendeeRepository,
     private val sessionManager: SessionManager,
 ) {
     private var dashboardJob: Job? = null
@@ -74,17 +87,47 @@ class DashboardPresenter(
     fun loadDashboard() {
         view?.updateHeader(sessionManager.getUserRole(), sessionManager.getFullName())
         view?.showLoading(true)
-        dashboardJob = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getSummary()) {
-                is NetworkResult.Success -> {
-                    view?.showLoading(false)
-                    view?.showSummary(result.data)
+        dashboardJob = MainScope().launch {
+            val summaryResult = repository.getSummary()
+            val eventsResult = attendeeRepository.getEvents()
+
+            view?.showLoading(false)
+
+            if (summaryResult is NetworkResult.Success) {
+                var summary = summaryResult.data
+                
+                // Always override upcomingEvents to ensure no dummy data remains
+                val upcoming = if (eventsResult is NetworkResult.Success) {
+                    val now = Instant.now()
+                    eventsResult.data
+                        .filter { it.eventStartAt?.isAfter(now) == true }
+                        .sortedBy { it.eventStartAt }
+                        .take(2)
+                        .map { event ->
+                            DashboardUpcomingEvent(
+                                eventId = event.eventId,
+                                title = event.title,
+                                location = event.location,
+                                eventStartAt = event.eventStartAt,
+                                status = "Upcoming",
+                                description = event.description,
+                                eventEndAt = event.eventEndAt,
+                                capacity = event.capacity,
+                                currentAttendeeCount = event.currentAttendeeCount
+                            )
+                        }
+                } else {
+                    emptyList()
                 }
-                is NetworkResult.Error -> {
-                    view?.showLoading(false)
-                    view?.showError(result.message)
+                
+                summary = summary.copy(upcomingEvents = upcoming)
+                view?.showSummary(summary)
+                
+                if (eventsResult is NetworkResult.Error) {
+                    view?.showMessage("Unable to load upcoming events: ${eventsResult.message}")
                 }
-                NetworkResult.Loading -> Unit
+            } else if (summaryResult is NetworkResult.Error) {
+                view?.showError(summaryResult.message)
             }
         }
     }
@@ -127,7 +170,12 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         configureAttendeeBottomNav(AttendeeBottomNavItem.DASHBOARD)
 
         sessionManager = SessionManager(this)
-        presenter = DashboardPresenter(this, DashboardRepository(this), sessionManager)
+        presenter = DashboardPresenter(
+            this,
+            DashboardRepository(this),
+            AttendeeRepository(this),
+            sessionManager
+        )
         presenter.attach(this)
 
         welcomeText = findViewById(R.id.txtDashboardWelcome)
@@ -231,6 +279,22 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(11), 0, dp(11), 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                val intent = Intent(this@DashboardActivity, com.thedavelopers.eventqr.features.attendee.EventDetailActivity::class.java).apply {
+                    putExtra(EXTRA_EVENT_ID, event.eventId.toString())
+                    putExtra(EXTRA_EVENT_TITLE, event.title)
+                    putExtra(EXTRA_EVENT_LOCATION, event.location ?: "")
+                    putExtra(EXTRA_EVENT_DESCRIPTION, event.description ?: "")
+                    putExtra(EXTRA_EVENT_START, DateFormatters.formatInstant(event.eventStartAt))
+                    putExtra(EXTRA_EVENT_END, DateFormatters.formatInstant(event.eventEndAt))
+                    putExtra(EXTRA_EVENT_STATUS, event.status ?: "Upcoming")
+                    putExtra(EXTRA_EVENT_CAPACITY, event.capacity.toString())
+                    putExtra(EXTRA_EVENT_COUNT, event.currentAttendeeCount.toString())
+                }
+                startActivity(intent)
+            }
         }
 
         row.addView(TextView(this).apply {
@@ -276,7 +340,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             ).apply {
                 topMargin = dp(8)
             }
-            text = event.status?.takeIf { it.isNotBlank() } ?: "Registered"
+            text = event.location?.takeIf { it.isNotBlank() } ?: "Upcoming"
             setTextColor(0xFF000000.toInt())
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
@@ -294,7 +358,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
                 topMargin = dp(23)
             }
             gravity = Gravity.CENTER
-            text = "No upcoming registered events yet."
+            text = "No upcoming events yet."
             setTextColor(0xFF6B7280.toInt())
             textSize = 13f
             setPadding(dp(12), dp(20), dp(12), dp(20))

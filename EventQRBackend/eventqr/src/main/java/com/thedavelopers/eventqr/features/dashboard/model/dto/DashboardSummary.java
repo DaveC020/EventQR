@@ -8,7 +8,7 @@ public record DashboardSummary(long totalEvents, long totalRegistrations, long t
                                long totalNotifications, String fullName,
                                List<DashboardUpcomingEvent> upcomingEvents) {
 
-    public record DashboardUpcomingEvent(UUID eventId, UUID registrationId, String title, Instant eventStartAt,
-                                         String status) {
+    public record DashboardUpcomingEvent(UUID eventId, UUID registrationId, String title, String location,
+                                         Instant eventStartAt, String status) {
     }
 }

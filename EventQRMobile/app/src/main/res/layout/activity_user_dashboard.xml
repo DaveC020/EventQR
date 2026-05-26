@@ -92,7 +92,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Registered"
+                    android:text="Registrations"
                     android:textColor="#FFFFFF"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -321,112 +321,6 @@
                             android:textColor="#000000"
                             android:textSize="14sp"
                             android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="78dp"
-                        android:layout_marginTop="23dp"
-                        android:background="@drawable/bg_soft_gray_pill"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="11dp"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="78dp"
-                            android:layout_height="56dp"
-                            android:background="@drawable/bg_white_pill_button"
-                            android:gravity="center"
-                            android:text="▣"
-                            android:textColor="#111111"
-                            android:textSize="22sp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="15dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text=""
-                                android:textColor="#000000"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text=""
-                                android:textColor="#6B7280"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text=""
-                                android:textColor="#000000"
-                                android:textSize="11sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="78dp"
-                        android:layout_marginTop="10dp"
-                        android:background="@drawable/bg_soft_gray_pill"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="11dp"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="78dp"
-                            android:layout_height="56dp"
-                            android:background="@drawable/bg_white_pill_button"
-                            android:gravity="center"
-                            android:text="▣"
-                            android:textColor="#111111"
-                            android:textSize="22sp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="15dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text=""
-                                android:textColor="#000000"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text=""
-                                android:textColor="#6B7280"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text=""
-                                android:textColor="#000000"
-                                android:textSize="11sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 

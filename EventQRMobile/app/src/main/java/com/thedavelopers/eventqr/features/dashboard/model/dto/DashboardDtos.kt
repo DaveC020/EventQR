@@ -15,8 +15,13 @@ data class DashboardSummary(
 
 data class DashboardUpcomingEvent(
     val eventId: UUID,
-    val registrationId: UUID,
+    val registrationId: UUID? = null,
     val title: String,
+    val location: String? = null,
     val eventStartAt: Instant? = null,
     val status: String? = null,
+    val description: String? = null,
+    val eventEndAt: Instant? = null,
+    val capacity: Int = 0,
+    val currentAttendeeCount: Int = 0,
 )

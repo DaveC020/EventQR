@@ -43,7 +43,7 @@
                 android:id="@+id/txtManagementEventName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tech Conference 2024"
+                android:text=""
                 android:textColor="#6B7280"
                 android:textSize="12sp" />
         </LinearLayout>
