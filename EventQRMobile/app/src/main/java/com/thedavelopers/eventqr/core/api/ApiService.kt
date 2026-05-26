@@ -12,6 +12,17 @@ import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintRequest
 import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintResponse
 import com.thedavelopers.eventqr.features.notifications.model.dto.NotificationRequest
 import com.thedavelopers.eventqr.features.notifications.model.dto.NotificationResponse
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerAttendeeDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerDashboardDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerEventDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerReportDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurposeDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurposeRequestDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerStaffDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerUserSearchDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentRequestDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentUpdateRequestDto
 import com.thedavelopers.eventqr.features.qrcredential.model.dto.QrCredentialSnapshot
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationRequest
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
@@ -32,11 +43,13 @@ import com.thedavelopers.eventqr.features.users.model.dto.UserResponse
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import okhttp3.ResponseBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("auth/login")
@@ -74,6 +87,68 @@ interface ApiService {
 
     @GET("events/{eventId}")
     suspend fun getEventById(@Path("eventId") eventId: String): ApiResponse<AttendeeEventResponse>
+
+    @GET("organizer/events")
+    suspend fun getOrganizerEvents(): ApiResponse<List<OrganizerEventDto>>
+
+    @GET("organizer/events/{eventId}/dashboard")
+    suspend fun getOrganizerDashboard(@Path("eventId") eventId: String): ApiResponse<OrganizerDashboardDto>
+
+    @GET("organizer/events/{eventId}/attendees")
+    suspend fun getOrganizerAttendees(@Path("eventId") eventId: String): ApiResponse<List<OrganizerAttendeeDto>>
+
+    @GET("organizer/events/{eventId}/attendees/{attendeeId}")
+    suspend fun getOrganizerAttendee(
+        @Path("eventId") eventId: String,
+        @Path("attendeeId") attendeeId: String,
+    ): ApiResponse<OrganizerAttendeeDto>
+
+    @GET("organizer/events/{eventId}/transactions")
+    suspend fun getOrganizerTransactions(@Path("eventId") eventId: String): ApiResponse<List<OrganizerTransactionDto>>
+
+    @GET("organizer/events/{eventId}/reports")
+    suspend fun getOrganizerReport(@Path("eventId") eventId: String): ApiResponse<OrganizerReportDto>
+
+    @GET("organizer/events/{eventId}/staff")
+    suspend fun getOrganizerStaff(@Path("eventId") eventId: String): ApiResponse<List<OrganizerStaffDto>>
+
+    @POST("organizer/events/{eventId}/staff")
+    suspend fun addOrganizerStaff(
+        @Path("eventId") eventId: String,
+        @Body request: StaffAssignmentRequestDto,
+    ): ApiResponse<OrganizerStaffDto>
+
+    @PATCH("organizer/events/{eventId}/staff/{assignmentId}")
+    suspend fun updateOrganizerStaff(
+        @Path("eventId") eventId: String,
+        @Path("assignmentId") assignmentId: String,
+        @Body request: StaffAssignmentUpdateRequestDto,
+    ): ApiResponse<OrganizerStaffDto>
+
+    @DELETE("organizer/events/{eventId}/staff/{assignmentId}")
+    suspend fun removeOrganizerStaff(
+        @Path("eventId") eventId: String,
+        @Path("assignmentId") assignmentId: String,
+    ): ApiResponse<Unit>
+
+    @GET("organizer/users/search")
+    suspend fun searchOrganizerUsers(@Query("query") query: String): ApiResponse<List<OrganizerUserSearchDto>>
+
+    @GET("organizer/events/{eventId}/scan-purposes")
+    suspend fun getOrganizerScanPurposes(@Path("eventId") eventId: String): ApiResponse<List<OrganizerScanPurposeDto>>
+
+    @POST("organizer/events/{eventId}/scan-purposes")
+    suspend fun createOrganizerScanPurpose(
+        @Path("eventId") eventId: String,
+        @Body request: OrganizerScanPurposeRequestDto,
+    ): ApiResponse<OrganizerScanPurposeDto>
+
+    @PATCH("organizer/events/{eventId}/scan-purposes/{purposeId}")
+    suspend fun updateOrganizerScanPurpose(
+        @Path("eventId") eventId: String,
+        @Path("purposeId") purposeId: String,
+        @Body request: OrganizerScanPurposeRequestDto,
+    ): ApiResponse<OrganizerScanPurposeDto>
 
     @POST("registrations")
     suspend fun createRegistration(@Body request: RegistrationRequest): ApiResponse<RegistrationResponse>
