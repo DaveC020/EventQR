@@ -32,11 +32,11 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/txtDashboardRole"
+                    android:id="@+id/txtDashboardName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="7dp"
-                    android:text="Attendee"
+                    android:text="Dharell Dave"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -244,12 +244,12 @@
                         android:orientation="horizontal">
 
                         <Button
-                            android:id="@+id/btnOrganizerHub"
+                            android:id="@+id/btnTransactionHistory"
                             android:layout_width="0dp"
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:background="@drawable/bg_quick_action_button"
-                            android:drawableTop="@drawable/ic_nav_gift"
+                            android:drawableTop="@drawable/ic_file"
                             android:drawablePadding="9dp"
                             android:drawableTint="#000000"
                             android:gravity="center"
@@ -257,7 +257,7 @@
                             android:minHeight="0dp"
                             android:paddingTop="10dp"
                             android:paddingBottom="10dp"
-                            android:text="Rewards"
+                            android:text="Transaction History"
                             android:textAllCaps="false"
                             android:textColor="#000000"
                             android:textSize="13sp"

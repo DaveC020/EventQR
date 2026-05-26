@@ -3,92 +3,196 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F7FA"
+    android:background="@color/eventqr_bg"
     android:orientation="vertical">
 
-    <ScrollView
+    <!-- Header Section -->
+    <LinearLayout
+        android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="140dp"
+        android:background="@drawable/bg_eventqr_gradient"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="32dp">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="wrap_content">
 
-            <!-- Header Section -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="220dp"
-                android:background="@drawable/background_gradient"
-                android:padding="24dp">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/txtWelcome"
+                    android:id="@+id/tvWelcome"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
                     android:text="Welcome back!"
                     android:textColor="#FFFFFF"
-                    android:textSize="26sp"
+                    android:textSize="24sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/txtStaffName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/txtWelcome"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="4dp"
                     android:text="Dharell Dave"
-                    android:textColor="#E0E0E0"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_below="@id/txtStaffName"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_circle_dark"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="4dp"
-                    android:text="Staff"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|end">
 
                 <ImageView
+                    android:id="@+id/btnNotification"
                     android:layout_width="28dp"
                     android:layout_height="28dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginTop="24dp"
-                    android:src="@drawable/notification_bell"
+                    android:layout_gravity="center"
                     android:contentDescription="Notifications"
+                    android:src="@drawable/notification_bell"
                     app:tint="#FFFFFF" />
 
                 <View
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginTop="24dp"
-                    android:background="@drawable/bg_circle_purple_soft"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_circle_avatar"
                     android:backgroundTint="#EF4444" />
+            </FrameLayout>
+        </FrameLayout>
+    </LinearLayout>
 
-            </RelativeLayout>
+    <!-- Main Content -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-            <!-- Assigned Events Card -->
-            <androidx.cardview.widget.CardView
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="24dp">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="-60dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="20dp">
 
+                <!-- Today's Activity Card -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@drawable/bg_card"
+                    android:elevation="4dp"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="20dp"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Today's Activity"
+                        android:textColor="@color/eventqr_text"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false">
+
+                        <!-- Scans Today -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/bg_staff_event_item"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <ImageView
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@drawable/ic_qr_scan"
+                                android:layout_marginBottom="8dp"/>
+
+                            <TextView
+                                android:id="@+id/txtScansToday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="48"
+                                android:textColor="@color/eventqr_text"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Scans Today"
+                                android:textColor="@color/eventqr_muted"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <!-- Check-ins Today -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_staff_event_item"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <ImageView
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@drawable/ic_group"
+                                android:layout_marginBottom="8dp"/>
+
+                            <TextView
+                                android:id="@+id/txtCheckinsToday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="50"
+                                android:textColor="@color/eventqr_text"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Check-Ins Today"
+                                android:textColor="@color/eventqr_muted"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- My Assigned Events Card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_card"
+                    android:elevation="4dp"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:layout_marginBottom="16dp">
 
                     <RelativeLayout
                         android:layout_width="match_parent"
@@ -99,8 +203,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="My Assigned Events"
-                            android:textColor="#000000"
-                            android:textSize="18sp"
+                            android:textColor="@color/eventqr_text"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -109,8 +213,8 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:text="2"
-                            android:textColor="#000000"
-                            android:textSize="18sp"
+                            android:textColor="@color/eventqr_text"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
                     </RelativeLayout>
 
@@ -118,19 +222,24 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_soft_gray_pill"
+                        android:background="@drawable/bg_staff_event_item"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="12dp">
+                        android:padding="12dp"
+                        android:layout_marginBottom="12dp">
 
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/transparent_rounded"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_calendar"
-                            android:contentDescription="Calendar"
-                            app:tint="#6B7280" />
+                        <FrameLayout
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_info_card"
+                            android:backgroundTint="#E5E7EB">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_nav_calendar"
+                                app:tint="@color/eventqr_muted" />
+                        </FrameLayout>
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -142,44 +251,48 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text=""
-                                android:textColor="#1F2937"
+                                android:text="Tech Conference 2024"
+                                android:textColor="@color/eventqr_text"
+                                android:textSize="16sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text=""
-                                android:textColor="#6B7280"
-                                android:textSize="12sp" />
+                                android:text="May 25, 2024 • 9:00 AM"
+                                android:textColor="@color/eventqr_muted"
+                                android:textSize="14sp" />
                         </LinearLayout>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="›"
-                            android:textColor="#D1D5DB"
-                            android:textSize="20sp" />
+                            android:textColor="@color/eventqr_muted"
+                            android:textSize="24sp" />
                     </LinearLayout>
 
                     <!-- Event Item 2 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:background="@drawable/bg_soft_gray_pill"
+                        android:background="@drawable/bg_staff_event_item"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:padding="12dp">
 
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/transparent_rounded"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_calendar"
-                            android:contentDescription="Calendar"
-                            app:tint="#6B7280" />
+                        <FrameLayout
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_info_card"
+                            android:backgroundTint="#E5E7EB">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_nav_calendar"
+                                app:tint="@color/eventqr_muted" />
+                        </FrameLayout>
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -192,178 +305,62 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Darell Event 2026"
-                                android:textColor="#1F2937"
+                                android:textColor="@color/eventqr_text"
+                                android:textSize="16sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text=""
-                                android:textColor="#6B7280"
-                                android:textSize="12sp" />
+                                android:text="May 25, 2024 • 9:00 AM"
+                                android:textColor="@color/eventqr_muted"
+                                android:textSize="14sp" />
                         </LinearLayout>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="›"
-                            android:textColor="#D1D5DB"
-                            android:textSize="20sp" />
+                            android:textColor="@color/eventqr_muted"
+                            android:textSize="24sp" />
                     </LinearLayout>
-
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Today's Activity Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="20dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@drawable/bg_card"
+                    android:elevation="4dp"
                     android:orientation="vertical"
                     android:padding="20dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:text="Today's Activity"
-                        android:textColor="#000000"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <!-- Scans Stat -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="8dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_soft_gray_pill"
-                            android:gravity="center"
-                            android:orientation="vertical"
-                            android:padding="16dp">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@drawable/ic_search"
-                                android:contentDescription="Scans"
-                                app:tint="#000000" />
-
-                            <TextView
-                                android:id="@+id/txtScansToday"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text="48"
-                                android:textColor="#000000"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Scans Today"
-                                android:textColor="#6B7280"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <!-- Check-ins Stat -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_soft_gray_pill"
-                            android:gravity="center"
-                            android:orientation="vertical"
-                            android:padding="16dp">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@drawable/ic_nav_profile"
-                                android:contentDescription="Check-ins"
-                                app:tint="#000000" />
-
-                            <TextView
-                                android:id="@+id/txtCheckinsToday"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text="50"
-                                android:textColor="#000000"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Check-Ins Today"
-                                android:textColor="#6B7280"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                    </LinearLayout>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Recent Scans Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
                         android:text="Recent Scans"
-                        android:textColor="#000000"
+                        android:textColor="@color/eventqr_text"
                         android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp"/>
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/recyclerRecentScans"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:nestedScrollingEnabled="false" />
-
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-        </LinearLayout>
-    </ScrollView>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
 
     <!-- Bottom Navigation -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="76dp"
-        android:background="#FFFFFF"
+        android:background="@drawable/bg_bottom_nav"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingHorizontal="24dp">
+        android:paddingHorizontal="38dp">
 
         <LinearLayout
             android:id="@+id/navDashboard"
@@ -374,26 +371,26 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/bg_circle_avatar"
-                android:backgroundTint="#2D2A7C"
-                android:padding="10dp"
+                android:layout_width="39dp"
+                android:layout_height="39dp"
+                android:background="@drawable/bg_nav_icon_active"
+                android:contentDescription="Dashboard"
+                android:padding="9dp"
                 android:src="@drawable/ic_nav_home"
                 app:tint="#FFFFFF" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="7dp"
                 android:text="Dashboard"
-                android:textColor="#374151"
+                android:textColor="#333333"
                 android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/navEvents"
+            android:id="@+id/navScanner"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -401,24 +398,25 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/transparent_rounded"
-                android:padding="10dp"
-                android:src="@drawable/ic_nav_calendar"
-                app:tint="#6B7280" />
+                android:layout_width="39dp"
+                android:layout_height="39dp"
+                android:background="@drawable/bg_nav_icon_inactive"
+                android:contentDescription="Scan QR"
+                android:padding="8dp"
+                android:src="@drawable/ic_qr_scan"
+                app:tint="#000000" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Events"
-                android:textColor="#6B7280"
+                android:layout_marginTop="7dp"
+                android:text="Scan QR"
+                android:textColor="#333333"
                 android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/navRewards"
+            android:id="@+id/navLogs"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -426,19 +424,20 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/transparent_rounded"
-                android:padding="10dp"
-                android:src="@drawable/ic_nav_gift"
-                app:tint="#6B7280" />
+                android:layout_width="39dp"
+                android:layout_height="39dp"
+                android:background="@drawable/bg_nav_icon_inactive"
+                android:contentDescription="Logs"
+                android:padding="8dp"
+                android:src="@drawable/ic_file"
+                app:tint="#000000" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Rewards"
-                android:textColor="#6B7280"
+                android:layout_marginTop="7dp"
+                android:text="Logs"
+                android:textColor="#333333"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -451,19 +450,20 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/transparent_rounded"
-                android:padding="10dp"
+                android:layout_width="39dp"
+                android:layout_height="39dp"
+                android:background="@drawable/bg_nav_icon_inactive"
+                android:contentDescription="Profile"
+                android:padding="8dp"
                 android:src="@drawable/ic_nav_profile"
-                app:tint="#6B7280" />
+                app:tint="#000000" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="7dp"
                 android:text="Profile"
-                android:textColor="#6B7280"
+                android:textColor="#333333"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>

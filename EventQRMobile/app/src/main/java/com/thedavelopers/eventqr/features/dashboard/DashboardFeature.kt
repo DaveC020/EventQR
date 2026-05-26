@@ -19,6 +19,7 @@ import com.thedavelopers.eventqr.core.util.DateFormatters
 import com.thedavelopers.eventqr.features.attendee.AttendeeBottomNavItem
 import com.thedavelopers.eventqr.features.attendee.AttendeeRepository
 import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_CAPACITY
+import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_CATEGORY
 import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_COUNT
 import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_DESCRIPTION
 import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_END
@@ -108,6 +109,7 @@ class DashboardPresenter(
                                 eventId = event.eventId,
                                 title = event.title,
                                 location = event.location,
+                                category = event.category,
                                 eventStartAt = event.eventStartAt,
                                 status = "Upcoming",
                                 description = event.description,
@@ -145,7 +147,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private lateinit var presenter: DashboardPresenter
     private lateinit var sessionManager: SessionManager
     private lateinit var welcomeText: TextView
-    private lateinit var roleText: TextView
+    private lateinit var nameText: TextView
     private lateinit var summaryEvents: TextView
     private lateinit var summaryRegistrations: TextView
     private lateinit var summaryTransactions: TextView
@@ -179,7 +181,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         presenter.attach(this)
 
         welcomeText = findViewById(R.id.txtDashboardWelcome)
-        roleText = findViewById(R.id.txtDashboardRole)
+        nameText = findViewById(R.id.txtDashboardName)
         summaryEvents = findViewById(R.id.txtTotalEvents)
         summaryRegistrations = findViewById(R.id.txtTotalRegistrations)
         summaryTransactions = findViewById(R.id.txtTotalTransactions)
@@ -188,7 +190,6 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         loadingText = findViewById(R.id.txtDashboardLoading)
         attendeeCard = findViewById(R.id.btnAttendeeHub)
         staffCard = findViewById(R.id.btnStaffHub)
-        organizerCard = findViewById(R.id.btnOrganizerHub)
         notificationsCard = findViewById(R.id.btnNotificationsHub)
         rewardsCard = findViewById(R.id.btnRewardsHub)
         reportsCard = findViewById(R.id.btnReportsHub)
@@ -221,7 +222,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
 
     override fun showSummary(summary: DashboardSummary) {
         loadingText.visibility = View.GONE
-        roleText.text = summary.fullName?.takeIf { it.isNotBlank() }
+        nameText.text = summary.fullName?.takeIf { it.isNotBlank() }
             ?: sessionManager.getFullName()?.takeIf { it.isNotBlank() }
             ?: "Attendee"
         summaryEvents.text = summary.totalEvents.toString()
@@ -251,7 +252,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
 
     override fun updateHeader(role: String?, name: String?) {
         welcomeText.text = "Welcome back!"
-        roleText.text = name?.takeIf { it.isNotBlank() } ?: "Attendee"
+        nameText.text = name?.takeIf { it.isNotBlank() } ?: "Attendee"
     }
 
     private fun renderUpcomingEvents(events: List<DashboardUpcomingEvent>?) {
@@ -287,6 +288,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
                     putExtra(EXTRA_EVENT_TITLE, event.title)
                     putExtra(EXTRA_EVENT_LOCATION, event.location ?: "")
                     putExtra(EXTRA_EVENT_DESCRIPTION, event.description ?: "")
+                    putExtra(EXTRA_EVENT_CATEGORY, event.category ?: "")
                     putExtra(EXTRA_EVENT_START, DateFormatters.formatInstant(event.eventStartAt))
                     putExtra(EXTRA_EVENT_END, DateFormatters.formatInstant(event.eventEndAt))
                     putExtra(EXTRA_EVENT_STATUS, event.status ?: "Upcoming")

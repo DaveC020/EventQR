@@ -13,4 +13,4 @@
     app:itemActiveIndicatorStyle="@null"
     app:itemIconSize="24dp"
     app:labelVisibilityMode="labeled"
-    app:menu="@menu/bottom_nav_menu" />
+    app:menu="@menu/user_bottom_nav_menu" />

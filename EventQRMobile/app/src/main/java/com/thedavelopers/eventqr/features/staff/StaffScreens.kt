@@ -19,10 +19,8 @@ import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.Validators
 import com.thedavelopers.eventqr.features.idprinting.IdPrintLogAdapter
 import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintRequest
-import com.thedavelopers.eventqr.features.notifications.NotificationAdapter
 import com.thedavelopers.eventqr.features.registrations.RegistrationAdapter
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
-import com.thedavelopers.eventqr.features.scanpurposes.ScanPurposeAdapter
 import com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResponse
 import com.thedavelopers.eventqr.features.transactions.TransactionAdapter
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionRequest
@@ -112,7 +110,15 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_scanner)
+        
+        val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        setContentView(R.layout.activity_staff_scanner)
 
         presenter = ScannerPresenter(this, StaffRepository(this))
         eventSpinner = findViewById(R.id.spnScannerEvent)
@@ -122,6 +128,10 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         resultText = findViewById(R.id.txtScannerResult)
         adapter = TransactionAdapter()
         staffUserId = SessionManager(this).getUserId()
+
+        findViewById<View>(R.id.btnBack)?.setOnClickListener {
+            onBackPressed()
+        }
 
         findViewById<RecyclerView>(R.id.recyclerScannerResults).apply {
             layoutManager = LinearLayoutManager(this@ScannerActivity)
@@ -170,6 +180,12 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         val labels = items.map { it.name }
         purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels).also {
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        
+        if (items.isNotEmpty()) {
+            findViewById<Button>(R.id.btnSubmitScan)?.text = "Start Scanning"
+        } else {
+            findViewById<Button>(R.id.btnSubmitScan)?.text = "Select Scan Purpose First"
         }
     }
 
@@ -224,6 +240,14 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_staff_transactions)
 
         presenter = StaffTransactionsPresenter(this, StaffRepository(this))
@@ -310,6 +334,14 @@ open class IdPrintingActivity : AppCompatActivity(), IdPrintingContract.View {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_id_printing)
 
         presenter = IdPrintingPresenter(this, StaffRepository(this))
@@ -387,6 +419,14 @@ open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsC
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_event_registrations)
 
         presenter = EventRegistrationsPresenter(this, StaffRepository(this))
@@ -466,6 +506,14 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_staff_dashboard)
 
         presenter = StaffDashboardPresenter(this, StaffRepository(this))
@@ -476,7 +524,6 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
             adapter = this@StaffDashboardActivity.adapter
         }
 
-        val sessionManager = SessionManager(this)
         findViewById<TextView>(R.id.txtStaffName).text = sessionManager.getFullName() ?: "Dharell Dave"
 
         findViewById<View>(R.id.txtScansToday).setOnClickListener {
@@ -487,12 +534,12 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
             startActivity(Intent(this, EventRegistrationsActivity::class.java))
         }
 
-        findViewById<View>(R.id.navEvents).setOnClickListener {
-            startActivity(Intent(this, StaffTransactionsActivity::class.java))
+        findViewById<View>(R.id.navScanner).setOnClickListener {
+            startActivity(Intent(this, ScannerActivity::class.java))
         }
 
-        findViewById<View>(R.id.navRewards).setOnClickListener {
-            startActivity(Intent(this, IdPrintingActivity::class.java))
+        findViewById<View>(R.id.navLogs).setOnClickListener {
+            startActivity(Intent(this, StaffTransactionsActivity::class.java))
         }
 
         findViewById<View>(R.id.navProfile).setOnClickListener {
@@ -529,9 +576,16 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
 open class StaffProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_profile)
         
         val sessionManager = SessionManager(this)
+        if (sessionManager.getUserRole() != "STAFF") {
+            Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        setContentView(R.layout.activity_profile)
+
         findViewById<TextView>(R.id.txtProfileName).text = sessionManager.getFullName() ?: "Staff User"
         findViewById<TextView>(R.id.txtProfileRole).text = "Staff"
         findViewById<TextView>(R.id.txtProfileEmail).text = sessionManager.getEmail() ?: "staff@eventqr.com"
