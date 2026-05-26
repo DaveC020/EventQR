@@ -45,6 +45,7 @@
         <activity android:name=".features.organizer.OrganizerDashboardActivity" android:exported="false" />
         <activity android:name=".features.organizer.AttendeeManagementActivity" android:exported="false" />
         <activity android:name=".features.organizer.AttendeeDetailsActivity" android:exported="false" />
+        <activity android:name=".features.organizer.TransactionLogsActivity" android:exported="false" />
         <activity android:name=".features.organizer.EventReportsActivity" android:exported="false" />
         <activity
             android:name=".ForgotPassword"

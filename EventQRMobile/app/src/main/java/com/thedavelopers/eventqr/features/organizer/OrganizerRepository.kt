@@ -15,6 +15,27 @@ import com.thedavelopers.eventqr.features.users.model.dto.UserRequest
 class OrganizerRepository(context: Context) {
     private val apiService = ApiClient.getService(context)
 
+    // TODO: Replace these MVP placeholders with organizer-scoped backend endpoints.
+    fun getApprovedOrganizerEvents(): List<OrganizerMvpEvent> = OrganizerMvpPlaceholders.events
+
+    fun getOrganizerAttendees(eventId: String): List<OrganizerMvpAttendee> =
+        OrganizerMvpPlaceholders.attendees.filter { it.eventId == eventId }
+
+    fun getOrganizerTransactions(eventId: String): List<OrganizerMvpTransaction> =
+        OrganizerMvpPlaceholders.transactions.filter { it.eventId == eventId }
+
+    fun getOrganizerStaff(eventId: String): List<OrganizerMvpStaff> =
+        OrganizerMvpPlaceholders.staff.filter { it.assignedEventId == eventId }
+
+    fun searchAvailableStaffUsers(query: String): List<OrganizerMvpStaff> =
+        OrganizerMvpPlaceholders.availableUsers.filter {
+            query.isBlank() ||
+                it.name.contains(query, ignoreCase = true) ||
+                it.email.contains(query, ignoreCase = true)
+        }
+
+    fun getOrganizerScanPurposes(): List<OrganizerMvpScanPurpose> = OrganizerMvpPlaceholders.scanPurposes
+
     suspend fun getEvents() = safeApiCall { apiService.getEvents() }
     suspend fun createEvent(request: EventRequest) = safeApiCall { apiService.createEvent(request) }
     suspend fun reviewEvent(eventId: String, request: EventApprovalRequest) = safeApiCall { apiService.reviewEvent(eventId, request) }

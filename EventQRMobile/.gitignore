@@ -50,6 +50,8 @@ google-services.json
 # Testing / reports
 test-results/
 reports/
+!app/src/main/java/com/thedavelopers/eventqr/features/reports/
+!app/src/main/java/com/thedavelopers/eventqr/features/reports/**
 coverage/
 *.ec
 

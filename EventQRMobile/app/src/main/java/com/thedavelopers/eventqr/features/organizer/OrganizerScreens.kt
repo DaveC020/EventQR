@@ -1,676 +1,795 @@
 package com.thedavelopers.eventqr.features.organizer
 
+import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.thedavelopers.eventqr.R
-import com.thedavelopers.eventqr.core.api.NetworkResult
-import com.thedavelopers.eventqr.core.api.dto.AccountRole
-import com.thedavelopers.eventqr.core.session.SessionManager
-import com.thedavelopers.eventqr.core.util.DateFormatters
-import com.thedavelopers.eventqr.features.events.EventAdapter
-import com.thedavelopers.eventqr.features.events.model.dto.EventApprovalRequest
-import com.thedavelopers.eventqr.features.events.model.dto.EventRequest
-import com.thedavelopers.eventqr.features.notifications.NotificationAdapter
-import com.thedavelopers.eventqr.features.notifications.model.dto.NotificationRequest
-import com.thedavelopers.eventqr.features.reports.model.dto.EventReportSnapshot
-import com.thedavelopers.eventqr.features.rewards.RewardAdapter
-import com.thedavelopers.eventqr.features.rewards.model.dto.PointRuleRequest
-import com.thedavelopers.eventqr.features.rewards.model.dto.RewardRequest
-import com.thedavelopers.eventqr.features.scanpurposes.ScanPurposeAdapter
-import com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeRequest
-import com.thedavelopers.eventqr.features.users.UserAdapter
-import com.thedavelopers.eventqr.features.users.model.dto.UserRequest
-import com.thedavelopers.eventqr.features.users.model.dto.UserResponse
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import java.time.Instant
-import java.util.UUID
+import kotlin.math.roundToInt
 
-class ManageEventsPresenter(
-    private var view: ManageEventsContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
+private fun AppCompatActivity.dp(value: Int): Int =
+    (value * resources.displayMetrics.density).roundToInt()
 
-    fun detach() {
-        job?.cancel()
-        view = null
-    }
-
-    fun load() {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getEvents()) {
-                is NetworkResult.Success -> view?.renderEvents(result.data)
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun create(event: EventRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.createEvent(event)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Event submitted")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-            load()
-        }
-    }
-
-    fun review(eventId: String, approved: Boolean, reviewerUserId: String, rejectionReason: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.reviewEvent(eventId, EventApprovalRequest(approved, UUID.fromString(reviewerUserId), rejectionReason.ifBlank { null }))) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Event reviewed")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-            load()
-        }
-    }
-
-    fun activate(eventId: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.activateEvent(eventId)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Event activated")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-            load()
-        }
-    }
-}
-
-interface ManageEventsContract {
-    interface View {
-        fun renderEvents(items: List<com.thedavelopers.eventqr.features.events.model.dto.EventResponse>)
-        fun showMessage(message: String)
-    }
-}
-
-open class ManageEventsActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity(), ManageEventsContract.View {
-    private lateinit var presenter: ManageEventsPresenter
-    private lateinit var adapter: EventAdapter
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_manage_events)
-
-        presenter = ManageEventsPresenter(this, OrganizerRepository(this))
-        adapter = EventAdapter { event ->
-            findViewById<EditText>(R.id.edtManageEventId).setText(event.eventId.toString())
-        }
-
-        findViewById<RecyclerView>(R.id.recyclerManageEvents).apply {
-            layoutManager = LinearLayoutManager(this@ManageEventsActivity)
-            adapter = this@ManageEventsActivity.adapter
-        }
-
-        findViewById<Button>(R.id.btnLoadManageEvents).setOnClickListener { presenter.load() }
-        findViewById<Button>(R.id.btnSubmitManageEvent).setOnClickListener {
-            presenter.create(readEventRequest())
-        }
-        findViewById<Button>(R.id.btnReviewManageEvent).setOnClickListener {
-            presenter.review(
-                findViewById<EditText>(R.id.edtManageEventId).text.toString(),
-                findViewById<CheckBox>(R.id.chkManageEventApproved).isChecked,
-                findViewById<EditText>(R.id.edtManageEventReviewerId).text.toString(),
-                findViewById<EditText>(R.id.edtManageEventRejectionReason).text.toString(),
-            )
-        }
-        findViewById<Button>(R.id.btnActivateManageEvent).setOnClickListener {
-            presenter.activate(findViewById<EditText>(R.id.edtManageEventId).text.toString())
-        }
-
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation) ?: findViewById<BottomNavigationView>(R.id.nav_view_container)
-        setupBottomNavigation(bottomNav)
-        updateBottomNavSelection(bottomNav, R.id.nav_events)
-
-        presenter.load()
-    }
-
-    override fun onDestroy() {
-        presenter.detach()
-        super.onDestroy()
-    }
-
-    private fun readEventRequest(): EventRequest {
-        fun parseInstant(text: String): Instant? = runCatching { Instant.parse(text.trim()) }.getOrNull()
-        return EventRequest(
-            title = findViewById<EditText>(R.id.edtManageEventTitle).text.toString(),
-            description = findViewById<EditText>(R.id.edtManageEventDescription).text.toString().ifBlank { null },
-            location = findViewById<EditText>(R.id.edtManageEventLocation).text.toString().ifBlank { null },
-            registrationOpenAt = parseInstant(findViewById<EditText>(R.id.edtManageEventRegOpen).text.toString()),
-            registrationCloseAt = parseInstant(findViewById<EditText>(R.id.edtManageEventRegClose).text.toString()),
-            eventStartAt = parseInstant(findViewById<EditText>(R.id.edtManageEventStart).text.toString()),
-            eventEndAt = parseInstant(findViewById<EditText>(R.id.edtManageEventEnd).text.toString()),
-            capacity = findViewById<EditText>(R.id.edtManageEventCapacity).text.toString().toIntOrNull() ?: 0,
-            rewardsEnabled = findViewById<CheckBox>(R.id.chkManageEventRewards).isChecked,
-            organizerUserId = UUID.fromString(findViewById<EditText>(R.id.edtManageEventOrganizerId).text.toString()),
+private fun AppCompatActivity.mvpPage(
+    title: String,
+    subtitle: String,
+    showBack: Boolean = true,
+): LinearLayout {
+    val scrollView = ScrollView(this)
+    val content = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16), dp(16), dp(16), dp(24))
+        layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
         )
     }
+    scrollView.addView(content)
+    setContentView(scrollView)
 
-    override fun renderEvents(items: List<com.thedavelopers.eventqr.features.events.model.dto.EventResponse>) {
-        adapter.submitItems(items)
+    if (showBack) {
+        content.addView(Button(this).apply {
+            text = "Back"
+            setOnClickListener { finish() }
+        })
+    }
+    content.addView(label(title, 24, true))
+    content.addView(label(subtitle, 14, false, "#5F6368"))
+    content.addView(spacer(12))
+    return content
+}
+
+private fun AppCompatActivity.label(
+    textValue: String,
+    sizeSp: Int = 16,
+    bold: Boolean = false,
+    color: String = "#202124",
+): TextView = TextView(this).apply {
+    text = textValue
+    textSize = sizeSp.toFloat()
+    setTextColor(Color.parseColor(color))
+    if (bold) setTypeface(typeface, Typeface.BOLD)
+    setPadding(0, dp(4), 0, dp(4))
+}
+
+private fun AppCompatActivity.spacer(heightDp: Int): View =
+    View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(1, dp(heightDp))
     }
 
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+private fun AppCompatActivity.section(title: String): TextView =
+    label(title, 18, true).apply { setPadding(0, dp(18), 0, dp(6)) }
+
+private fun AppCompatActivity.card(): LinearLayout =
+    LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(14), dp(12), dp(14), dp(12))
+        setBackgroundResource(com.thedavelopers.eventqr.R.drawable.bg_card)
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { setMargins(0, dp(6), 0, dp(8)) }
+    }
+
+private fun AppCompatActivity.primaryButton(textValue: String, onClick: () -> Unit): Button =
+    Button(this).apply {
+        text = textValue
+        setAllCaps(false)
+        setOnClickListener { onClick() }
+    }
+
+private fun AppCompatActivity.statCard(title: String, value: String): LinearLayout =
+    card().apply {
+        addView(label(value, 22, true))
+        addView(label(title, 13, false, "#5F6368"))
+    }
+
+private fun AppCompatActivity.stateBox(vararg states: String): LinearLayout =
+    card().apply {
+        addView(label("Screen states", 15, true))
+        states.forEach { addView(label(it, 13, false, "#5F6368")) }
+    }
+
+private fun AppCompatActivity.eventSelector(
+    events: List<OrganizerMvpEvent>,
+    onSelected: (OrganizerMvpEvent) -> Unit,
+): Spinner = Spinner(this).apply {
+    adapter = ArrayAdapter(
+        this@eventSelector,
+        android.R.layout.simple_spinner_item,
+        events.map { it.title },
+    ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+    onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            onSelected(events[position])
+        }
+
+        override fun onNothingSelected(parent: AdapterView<*>?) = Unit
     }
 }
 
-class ManageUsersPresenter(
-    private var view: ManageUsersContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
-
-    fun detach() {
-        job?.cancel()
-        view = null
-    }
-
-    fun load() {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getUsers()) {
-                is NetworkResult.Success -> view?.renderUsers(result.data)
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun create(request: UserRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.createUser(request)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "User created")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-            load()
-        }
-    }
-
-    fun changeRole(userId: String, role: AccountRole) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.changeUserRole(userId, role)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Role updated")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-            load()
-        }
-    }
+private fun EditText.afterTextChanged(onChanged: () -> Unit) {
+    addTextChangedListener(object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = onChanged()
+        override fun afterTextChanged(s: Editable?) = Unit
+    })
 }
 
-interface ManageUsersContract {
-    interface View {
-        fun renderUsers(items: List<UserResponse>)
-        fun showMessage(message: String)
-    }
-}
-
-open class ManageUsersActivity : AppCompatActivity(), ManageUsersContract.View {
-    private lateinit var presenter: ManageUsersPresenter
-    private lateinit var adapter: UserAdapter
-    private lateinit var roleSpinner: Spinner
-
-    private var selectedUserId: String? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_manage_users)
-
-        presenter = ManageUsersPresenter(this, OrganizerRepository(this))
-        adapter = UserAdapter { user -> selectedUserId = user.userId.toString() }
-        roleSpinner = findViewById(R.id.spnUserRole)
-
-        findViewById<RecyclerView>(R.id.recyclerManageUsers).apply {
-            layoutManager = LinearLayoutManager(this@ManageUsersActivity)
-            adapter = this@ManageUsersActivity.adapter
-        }
-
-        roleSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, AccountRole.values().map { it.name })
-            .also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-
-        findViewById<Button>(R.id.btnLoadManageUsers).setOnClickListener { presenter.load() }
-        findViewById<Button>(R.id.btnCreateUser).setOnClickListener { presenter.create(readUserRequest()) }
-        findViewById<Button>(R.id.btnChangeRole).setOnClickListener {
-            val userId = selectedUserId ?: findViewById<EditText>(R.id.edtTargetUserId).text.toString()
-            presenter.changeRole(userId, AccountRole.valueOf(roleSpinner.selectedItem.toString()))
-        }
-
-        presenter.load()
-    }
-
-    private fun readUserRequest(): UserRequest {
-        return UserRequest(
-            email = findViewById<EditText>(R.id.edtUserEmail).text.toString(),
-            fullName = findViewById<EditText>(R.id.edtUserFullName).text.toString(),
-            phoneNumber = findViewById<EditText>(R.id.edtUserPhone).text.toString().ifBlank { null },
-            password = findViewById<EditText>(R.id.edtUserPassword).text.toString(),
-            role = AccountRole.valueOf(roleSpinner.selectedItem.toString()),
-        )
-    }
-
-    override fun renderUsers(items: List<UserResponse>) {
-        adapter.submitItems(items)
-    }
-
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-}
-
-class ManageScanPurposesPresenter(
-    private var view: ManageScanPurposesContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
-
-    fun detach() { job?.cancel(); view = null }
-
-    fun load(eventId: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getScanPurposesByEvent(eventId)) {
-                is NetworkResult.Success -> view?.renderPurposes(result.data)
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun create(request: ScanPurposeRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.createScanPurpose(request)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Scan purpose created")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-}
-
-interface ManageScanPurposesContract {
-    interface View {
-        fun renderPurposes(items: List<com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResponse>)
-        fun showMessage(message: String)
-    }
-}
-
-open class ManageScanPurposesActivity : AppCompatActivity(), ManageScanPurposesContract.View {
-    private lateinit var presenter: ManageScanPurposesPresenter
-    private lateinit var adapter: ScanPurposeAdapter
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_manage_scan_purposes)
-
-        presenter = ManageScanPurposesPresenter(this, OrganizerRepository(this))
-        adapter = ScanPurposeAdapter()
-
-        findViewById<RecyclerView>(R.id.recyclerManageScanPurposes).apply {
-            layoutManager = LinearLayoutManager(this@ManageScanPurposesActivity)
-            adapter = this@ManageScanPurposesActivity.adapter
-        }
-
-        findViewById<Button>(R.id.btnLoadScanPurposes).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtScanPurposeEventId).text.toString())
-        }
-        findViewById<Button>(R.id.btnCreateScanPurpose).setOnClickListener {
-            presenter.create(readRequest())
-        }
-    }
-
-    private fun readRequest(): ScanPurposeRequest {
-        val codeSpinner = findViewById<Spinner>(R.id.spnScanPurposeCode)
-        return ScanPurposeRequest(
-            eventId = UUID.fromString(findViewById<EditText>(R.id.edtScanPurposeEventId).text.toString()),
-            name = findViewById<EditText>(R.id.edtScanPurposeName).text.toString(),
-            code = com.thedavelopers.eventqr.core.api.dto.ScanPurposeCode.valueOf(codeSpinner.selectedItem.toString()),
-            active = findViewById<CheckBox>(R.id.chkScanPurposeActive).isChecked,
-            trackingOnly = findViewById<CheckBox>(R.id.chkScanPurposeTrackingOnly).isChecked,
-            description = findViewById<EditText>(R.id.edtScanPurposeDescription).text.toString().ifBlank { null },
-        )
-    }
-
-    override fun renderPurposes(items: List<com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResponse>) {
-        adapter.submitItems(items)
-    }
-
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-}
-
-class ManageRewardsPresenter(
-    private var view: ManageRewardsContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
-
-    fun detach() { job?.cancel(); view = null }
-
-    fun load(eventId: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val rewards = repository.getRewardsByEvent(eventId)) {
-                is NetworkResult.Success -> view?.renderRewards(rewards.data)
-                is NetworkResult.Error -> view?.showMessage(rewards.message)
-                NetworkResult.Loading -> Unit
-            }
-            when (val rules = repository.getPointRules(eventId)) {
-                is NetworkResult.Success -> view?.renderPointRules(rules.data)
-                is NetworkResult.Error -> Unit
-                NetworkResult.Loading -> Unit
-            }
-            when (val redemptions = repository.getRewardRedemptions(eventId)) {
-                is NetworkResult.Success -> view?.renderRedemptions(redemptions.data)
-                is NetworkResult.Error -> Unit
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun createReward(request: RewardRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.saveReward(request)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Reward saved")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun createPointRule(request: PointRuleRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.savePointRule(request)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Point rule saved")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-}
-
-interface ManageRewardsContract {
-    interface View {
-        fun renderRewards(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.RewardResponse>)
-        fun renderPointRules(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.PointRuleResponse>)
-        fun renderRedemptions(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.RewardRedemptionResponse>)
-        fun showMessage(message: String)
-    }
-}
-
-open class ManageRewardsActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity(), ManageRewardsContract.View {
-    private lateinit var presenter: ManageRewardsPresenter
-    private lateinit var adapter: RewardAdapter
-    private lateinit var rewardsText: TextView
-    private lateinit var rulesText: TextView
-    private lateinit var redemptionsText: TextView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_manage_rewards)
-
-        presenter = ManageRewardsPresenter(this, OrganizerRepository(this))
-        adapter = RewardAdapter { }
-        rewardsText = findViewById(R.id.txtRewardsList)
-        rulesText = findViewById(R.id.txtPointRulesList)
-        redemptionsText = findViewById(R.id.txtRedemptionsList)
-
-        findViewById<Button>(R.id.btnLoadManageRewards).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtRewardsEventId).text.toString())
-        }
-        findViewById<Button>(R.id.btnCreateReward).setOnClickListener { presenter.createReward(readRewardRequest()) }
-        findViewById<Button>(R.id.btnCreatePointRule).setOnClickListener { presenter.createPointRule(readPointRuleRequest()) }
-
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation) ?: findViewById<BottomNavigationView>(R.id.nav_view_container)
-        setupBottomNavigation(bottomNav)
-        updateBottomNavSelection(bottomNav, R.id.nav_rewards)
-    }
-
-    private fun readRewardRequest(): RewardRequest {
-        return RewardRequest(
-            eventId = UUID.fromString(findViewById<EditText>(R.id.edtRewardsEventId).text.toString()),
-            name = findViewById<EditText>(R.id.edtRewardName).text.toString(),
-            pointsRequired = findViewById<EditText>(R.id.edtRewardPointsRequired).text.toString().toIntOrNull() ?: 0,
-            stockQuantity = findViewById<EditText>(R.id.edtRewardStock).text.toString().toIntOrNull(),
-        )
-    }
-
-    private fun readPointRuleRequest(): PointRuleRequest {
-        return PointRuleRequest(
-            eventId = UUID.fromString(findViewById<EditText>(R.id.edtRewardsEventId).text.toString()),
-            scanPurposeId = UUID.fromString(findViewById<EditText>(R.id.edtPointRuleScanPurposeId).text.toString()),
-            points = findViewById<EditText>(R.id.edtPointRulePoints).text.toString().toIntOrNull() ?: 0,
-            active = findViewById<CheckBox>(R.id.chkPointRuleActive).isChecked,
-        )
-    }
-
-    override fun renderRewards(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.RewardResponse>) {
-        rewardsText.text = items.joinToString("\n\n") { "${it.name} - ${it.pointsRequired} pts - ${it.status.name}" }
-    }
-
-    override fun renderPointRules(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.PointRuleResponse>) {
-        rulesText.text = items.joinToString("\n\n") { "Purpose ${it.scanPurposeId} - ${it.points} pts - ${if (it.active) "Active" else "Inactive"}" }
-    }
-
-    override fun renderRedemptions(items: List<com.thedavelopers.eventqr.features.rewards.model.dto.RewardRedemptionResponse>) {
-        redemptionsText.text = items.joinToString("\n\n") { "${it.rewardId} - ${it.status.name} - ${it.pointsSpent} pts" }
-    }
-
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-}
-
-class ReportsPresenter(
-    private var view: ReportsContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
-    fun detach() { job?.cancel(); view = null }
-    fun load(eventId: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getEventReport(eventId)) {
-                is NetworkResult.Success -> view?.renderReport(result.data)
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-}
-
-interface ReportsContract {
-    interface View {
-        fun renderReport(snapshot: EventReportSnapshot)
-        fun showMessage(message: String)
-    }
-}
-
-open class ReportsActivity : AppCompatActivity(), ReportsContract.View {
-    private lateinit var presenter: ReportsPresenter
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_reports)
-
-        presenter = ReportsPresenter(this, OrganizerRepository(this))
-        findViewById<Button>(R.id.btnLoadReport).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtReportEventId).text.toString())
-        }
-    }
-
-    override fun onDestroy() {
-        presenter.detach()
-        super.onDestroy()
-    }
-
-    override fun renderReport(snapshot: EventReportSnapshot) {
-        findViewById<TextView>(R.id.txtReportSummary).text = buildString {
-            append("Total attendees: ${snapshot.totalAttendees}\n")
-            append("Registered: ${snapshot.registeredCount}\n")
-            append("Entered: ${snapshot.enteredCount}\n")
-            append("Exited: ${snapshot.exitedCount}\n")
-            append("No show: ${snapshot.noShowCount}\n")
-            append("Attendance scans: ${snapshot.attendanceCount}\n")
-            append("Claims: ${snapshot.claimsCount}\n")
-            append("Booth/session visits: ${snapshot.boothSessionVisits}\n")
-            append("Rewards redeemed: ${snapshot.rewardsRedeemed}\n")
-            append("Total points: ${snapshot.totalPointsEarned}\n")
-            append("Approved tx: ${snapshot.approvedTransactions}\n")
-            append("Rejected tx: ${snapshot.rejectedTransactions}")
-        }
-    }
-
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-}
-
-class NotificationManagementPresenter(
-    private var view: NotificationManagementContract.View?,
-    private val repository: OrganizerRepository,
-) {
-    private var job: Job? = null
-    fun detach() { job?.cancel(); view = null }
-    fun load(eventId: String) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getNotificationsByEvent(eventId)) {
-                is NetworkResult.Success -> view?.renderNotifications(result.data)
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-    fun create(request: NotificationRequest) {
-        job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.createNotification(request)) {
-                is NetworkResult.Success -> view?.showMessage(result.message ?: "Notification created")
-                is NetworkResult.Error -> view?.showMessage(result.message)
-                NetworkResult.Loading -> Unit
-            }
-        }
-    }
-}
-
-interface NotificationManagementContract {
-    interface View {
-        fun renderNotifications(items: List<com.thedavelopers.eventqr.features.notifications.model.dto.NotificationResponse>)
-        fun showMessage(message: String)
-    }
-}
-
-open class NotificationManagementActivity : AppCompatActivity(), NotificationManagementContract.View {
-    private lateinit var presenter: NotificationManagementPresenter
-    private lateinit var adapter: NotificationAdapter
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_notification_management)
-
-        presenter = NotificationManagementPresenter(this, OrganizerRepository(this))
-        adapter = NotificationAdapter()
-
-        findViewById<RecyclerView>(R.id.recyclerNotificationManagement).apply {
-            layoutManager = LinearLayoutManager(this@NotificationManagementActivity)
-            adapter = this@NotificationManagementActivity.adapter
-        }
-
-        findViewById<Button>(R.id.btnLoadNotificationManagement).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtNotificationEventId).text.toString())
-        }
-        findViewById<Button>(R.id.btnCreateNotification).setOnClickListener { presenter.create(readRequest()) }
-    }
-
-    private fun readRequest(): NotificationRequest {
-        return NotificationRequest(
-            eventId = UUID.fromString(findViewById<EditText>(R.id.edtNotificationEventId).text.toString()),
-            recipientUserId = UUID.fromString(findViewById<EditText>(R.id.edtNotificationRecipientId).text.toString()),
-            title = findViewById<EditText>(R.id.edtNotificationTitle).text.toString(),
-            message = findViewById<EditText>(R.id.edtNotificationMessage).text.toString(),
-        )
-    }
-
-    override fun renderNotifications(items: List<com.thedavelopers.eventqr.features.notifications.model.dto.NotificationResponse>) {
-        adapter.submitItems(items)
-    }
-
-    override fun showMessage(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
+private fun LinearLayout.replaceWith(items: List<View>) {
+    removeAllViews()
+    items.forEach { addView(it) }
 }
 
 open class OrganizerDashboardActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_organizer_dashboard)
+        repository = OrganizerRepository(this)
+        val events = repository.getApprovedOrganizerEvents()
+        val content = mvpPage(
+            title = "Organizer Dashboard",
+            subtitle = "Hello, Organizer. Manage approved EventQR events, attendee flow, scans, staff, and reports.",
+            showBack = false,
+        )
 
-        findViewById<View>(R.id.btnAttendeeManagement).setOnClickListener {
-            startActivity(Intent(this, AttendeeManagementActivity::class.java))
+        val totals = events.fold(OrganizerTotals()) { acc, event ->
+            acc.copy(
+                events = acc.events + 1,
+                registered = acc.registered + event.registeredCount,
+                entered = acc.entered + event.enteredCount,
+                transactions = acc.transactions + event.totalTransactions,
+                issues = acc.issues + event.rejectedScans,
+            )
         }
 
-        findViewById<View>(R.id.btnStaffManagement).setOnClickListener {
-            startActivity(Intent(this, ManageUsersActivity::class.java))
+        content.addView(section("Summary"))
+        listOf(
+            "Approved events count" to totals.events.toString(),
+            "Total registered attendees" to totals.registered.toString(),
+            "Total checked-in/entered attendees" to totals.entered.toString(),
+            "Total transactions" to totals.transactions.toString(),
+            "Pending issues/rejected scans" to totals.issues.toString(),
+        ).forEach { content.addView(statCard(it.first, it.second)) }
+
+        content.addView(section("My Approved Events"))
+        if (events.isEmpty()) {
+            content.addView(label("Empty state: no approved events assigned to this organizer yet."))
+        } else {
+            events.take(3).forEach { event ->
+                content.addView(card().apply {
+                    addView(label(event.title, 17, true))
+                    addView(label("${event.dateTime} | ${event.venue}"))
+                    addView(label("Registered ${event.registeredCount} | Entered ${event.enteredCount} | Status ${event.status}"))
+                    addView(primaryButton("Manage Event") {
+                        startActivity(Intent(this@OrganizerDashboardActivity, ManageEventsActivity::class.java))
+                    })
+                })
+            }
         }
 
-        findViewById<View>(R.id.btnScanPurposes).setOnClickListener {
-            startActivity(Intent(this, ManageScanPurposesActivity::class.java))
+        content.addView(section("Quick Actions"))
+        listOf(
+            "My Events / Event Management" to ManageEventsActivity::class.java,
+            "Attendee Management" to AttendeeManagementActivity::class.java,
+            "Transaction Logs" to TransactionLogsActivity::class.java,
+            "Event Reports" to EventReportsActivity::class.java,
+            "Manage Staff Access" to ManageUsersActivity::class.java,
+            "Scan Purpose Management" to ManageScanPurposesActivity::class.java,
+        ).forEach { (title, activityClass) ->
+            content.addView(primaryButton(title) {
+                startActivity(Intent(this, activityClass))
+            })
         }
 
-        findViewById<View>(R.id.btnRewardManagement).setOnClickListener {
-            startActivity(Intent(this, ManageRewardsActivity::class.java))
-        }
+        content.addView(stateBox(
+            "Loading: shown while organizer metrics load.",
+            "Success: sample approved events are displayed.",
+            "Empty: dashboard shows a no-events message.",
+            "Error: backend failures will surface here after integration.",
+        ))
+    }
+}
 
-        findViewById<View>(R.id.btnReportsAnalytics).setOnClickListener {
-            startActivity(Intent(this, EventReportsActivity::class.java))
+private data class OrganizerTotals(
+    val events: Int = 0,
+    val registered: Int = 0,
+    val entered: Int = 0,
+    val transactions: Int = 0,
+    val issues: Int = 0,
+)
+
+open class ManageEventsActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+    private lateinit var listContainer: LinearLayout
+    private lateinit var detailsContainer: LinearLayout
+    private lateinit var searchInput: EditText
+    private lateinit var statusFilter: Spinner
+    private var selectedEvent: OrganizerMvpEvent? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repository = OrganizerRepository(this)
+        val content = mvpPage(
+            title = "My Events / Event Management",
+            subtitle = "Approved organizer events only. Event creation/review remains outside this organizer MVP screen.",
+        )
+        searchInput = EditText(this).apply {
+            hint = "Search approved events"
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+        statusFilter = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@ManageEventsActivity,
+                android.R.layout.simple_spinner_item,
+                listOf("All statuses", "Approved", "Active", "Ended"),
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        }
+        listContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        detailsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        content.addView(searchInput)
+        content.addView(statusFilter)
+        content.addView(stateBox(
+            "Loading: event list loading.",
+            "Empty: no approved events.",
+            "Success: approved events shown below.",
+            "Error: failed to load organizer events.",
+        ))
+        content.addView(section("Approved Events"))
+        content.addView(listContainer)
+        content.addView(section("Event Management Details"))
+        content.addView(detailsContainer)
+
+        searchInput.afterTextChanged { render() }
+        statusFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = render()
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        render()
+    }
+
+    private fun render() {
+        val query = searchInput.text.toString()
+        val status = statusFilter.selectedItem?.toString().orEmpty()
+        val events = repository.getApprovedOrganizerEvents().filter {
+            it.title.contains(query, ignoreCase = true) &&
+                (status == "All statuses" || it.status.equals(status, ignoreCase = true))
+        }
+        listContainer.removeAllViews()
+        if (events.isEmpty()) {
+            listContainer.addView(label("Empty/no-result state: no approved events match this view."))
+            detailsContainer.removeAllViews()
+            return
+        }
+        events.forEach { event ->
+            listContainer.addView(card().apply {
+                addView(label(event.title, 17, true))
+                addView(label("Date/time: ${event.dateTime}"))
+                addView(label("Venue: ${event.venue}"))
+                addView(label("Status: ${event.status}"))
+                addView(label("Registered: ${event.registeredCount} | Checked-in/entered: ${event.enteredCount}"))
+                addView(primaryButton("Manage Event") {
+                    selectedEvent = event
+                    renderDetails(event)
+                })
+            })
+        }
+        if (selectedEvent == null) {
+            selectedEvent = events.first()
+            renderDetails(events.first())
+        }
+    }
+
+    private fun renderDetails(event: OrganizerMvpEvent) {
+        detailsContainer.removeAllViews()
+        detailsContainer.addView(card().apply {
+            addView(label("Event information", 16, true))
+            addView(label("${event.title}\n${event.dateTime}\n${event.venue}\nStatus: ${event.status}"))
+        })
+        detailsContainer.addView(card().apply {
+            addView(label("Registration/attendance summary", 16, true))
+            addView(label("Registered: ${event.registeredCount}"))
+            addView(label("Entered / checked-in: ${event.enteredCount}"))
+            addView(label("Attended: ${event.attendedCount}"))
+            addView(label("Exited: ${event.exitedCount}"))
+            addView(label("No-show: ${event.noShowCount}"))
+        })
+        detailsContainer.addView(card().apply {
+            addView(label("Configuration status", 16, true))
+            addView(label("ID template status: ${event.idTemplateStatus}"))
+            addView(label("Rewards status: ${event.rewardsStatus}"))
+            addView(label("Staff count: ${event.staffCount}"))
+            addView(label("Scan purposes count: ${event.scanPurposesCount}"))
+        })
+        listOf(
+            "Attendee Management" to AttendeeManagementActivity::class.java,
+            "Transaction Logs" to TransactionLogsActivity::class.java,
+            "Event Reports" to EventReportsActivity::class.java,
+            "Staff Access" to ManageUsersActivity::class.java,
+            "Scan Purpose Settings" to ManageScanPurposesActivity::class.java,
+        ).forEach { (title, activityClass) ->
+            detailsContainer.addView(primaryButton(title) {
+                startActivity(Intent(this, activityClass).putExtra("event_id", event.id))
+            })
         }
     }
 }
 
 open class AttendeeManagementActivity : AppCompatActivity() {
-    private lateinit var adapter: AttendeeManagementAdapter
     private lateinit var repository: OrganizerRepository
+    private lateinit var selector: Spinner
+    private lateinit var searchInput: EditText
+    private lateinit var statusFilter: Spinner
+    private lateinit var attendeeList: LinearLayout
+    private lateinit var details: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_attendee_management)
         repository = OrganizerRepository(this)
-        
-        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        
-        adapter = AttendeeManagementAdapter { attendee ->
-            startActivity(Intent(this, AttendeeDetailsActivity::class.java).putExtra("extra_attendee_id", attendee.registrationId.toString()))
+        val events = repository.getApprovedOrganizerEvents()
+        val content = mvpPage(
+            title = "Attendee Management",
+            subtitle = "View attendee status, QR credential status, points, and event transaction history.",
+        )
+        selector = eventSelector(events) { render() }
+        searchInput = EditText(this).apply { hint = "Search attendees by name or email" }
+        statusFilter = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@AttendeeManagementActivity,
+                android.R.layout.simple_spinner_item,
+                listOf("All", "Registered", "Entered / Checked-in", "Attended", "Exited", "No-show"),
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
         }
-        
-        findViewById<RecyclerView>(R.id.recyclerAttendees).apply {
-            layoutManager = LinearLayoutManager(this@AttendeeManagementActivity)
-            adapter = this@AttendeeManagementActivity.adapter
+        attendeeList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        content.addView(label("Event selector", 15, true))
+        content.addView(selector)
+        content.addView(searchInput)
+        content.addView(statusFilter)
+        content.addView(stateBox(
+            "Loading: attendee records loading.",
+            "Empty: selected event has no attendees.",
+            "No-result: filters/search matched nobody.",
+            "Success: attendees shown below.",
+            "Error: failed to load attendees.",
+        ))
+        content.addView(section("Attendee List"))
+        content.addView(attendeeList)
+        content.addView(section("Attendee Details"))
+        content.addView(details)
+
+        searchInput.afterTextChanged { render() }
+        statusFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = render()
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
-        
-        loadAttendees()
+        render()
     }
-    
-    private fun loadAttendees() {
-        // Implementation to fetch attendees for active event
-        kotlinx.coroutines.MainScope().launch {
-            // For now, load all registrations as a placeholder
-            when (val result = repository.getRegistrationsByEvent("some-event-id")) {
-                is NetworkResult.Success -> adapter.submitItems(result.data)
-                else -> Unit
+
+    private fun selectedEvent(): OrganizerMvpEvent =
+        repository.getApprovedOrganizerEvents()[selector.selectedItemPosition.coerceAtLeast(0)]
+
+    private fun render() {
+        if (!::selector.isInitialized || !::attendeeList.isInitialized) return
+        val event = selectedEvent()
+        val query = searchInput.text.toString()
+        val filter = statusFilter.selectedItem?.toString().orEmpty()
+        val attendees = repository.getOrganizerAttendees(event.id).filter {
+            (filter == "All" || it.currentEventStatus.equals(filter, true) || it.registrationStatus.equals(filter, true)) &&
+                (it.name.contains(query, true) || it.email.contains(query, true))
+        }
+        attendeeList.removeAllViews()
+        if (attendees.isEmpty()) {
+            attendeeList.addView(label("Empty/no-result state: no attendee records found for ${event.title}."))
+            details.removeAllViews()
+            return
+        }
+        attendees.forEach { attendee ->
+            attendeeList.addView(card().apply {
+                addView(label(attendee.name, 17, true))
+                addView(label(attendee.email))
+                addView(label("Registration: ${attendee.registrationStatus} | Current: ${attendee.currentEventStatus}"))
+                addView(label("Points: ${attendee.points} | Last transaction: ${attendee.lastTransactionTime}"))
+                addView(primaryButton("View Details") { renderDetails(attendee) })
+            })
+        }
+        renderDetails(attendees.first())
+    }
+
+    private fun renderDetails(attendee: OrganizerMvpAttendee) {
+        details.removeAllViews()
+        details.addView(card().apply {
+            addView(label("Contact information", 16, true))
+            addView(label("${attendee.name}\n${attendee.email}\n${attendee.phone}"))
+            addView(label("Registration details", 16, true))
+            addView(label("Registration status: ${attendee.registrationStatus}"))
+            addView(label("QR credential status: ${attendee.qrCredentialStatus}"))
+            addView(label("Current event status: ${attendee.currentEventStatus}"))
+            addView(label("Event-specific points: ${attendee.points}"))
+            addView(label("Recent transaction history", 16, true))
+            addView(label(attendee.recentTransactions.ifEmpty { listOf("No recent transactions.") }.joinToString("\n")))
+        })
+    }
+}
+
+open class TransactionLogsActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+    private lateinit var selector: Spinner
+    private lateinit var filter: Spinner
+    private lateinit var logList: LinearLayout
+    private lateinit var details: LinearLayout
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repository = OrganizerRepository(this)
+        val events = repository.getApprovedOrganizerEvents()
+        val content = mvpPage(
+            title = "Transaction Logs",
+            subtitle = "Scan transactions and rejected scans for the selected organizer event.",
+        )
+        selector = eventSelector(events) { render() }
+        filter = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@TransactionLogsActivity,
+                android.R.layout.simple_spinner_item,
+                listOf("All", "Entry", "Attendance", "Benefit Claim", "Booth/Session Visit", "Reward Redemption", "Exit", "Rejected/Invalid"),
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        }
+        logList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(label("Event selector", 15, true))
+        content.addView(selector)
+        content.addView(filter)
+        content.addView(section("Logs"))
+        content.addView(logList)
+        content.addView(section("Transaction Detail"))
+        content.addView(details)
+        filter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = render()
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        render()
+    }
+
+    private fun render() {
+        if (!::selector.isInitialized || !::logList.isInitialized) return
+        val event = repository.getApprovedOrganizerEvents()[selector.selectedItemPosition.coerceAtLeast(0)]
+        val selectedFilter = filter.selectedItem?.toString().orEmpty()
+        val logs = repository.getOrganizerTransactions(event.id).filter {
+            selectedFilter == "All" ||
+                it.type == selectedFilter ||
+                (selectedFilter == "Rejected/Invalid" && it.status == "Rejected")
+        }
+        logList.removeAllViews()
+        if (logs.isEmpty()) {
+            logList.addView(label("Empty state: there are no logs for this event/filter yet."))
+            details.removeAllViews()
+            return
+        }
+        logs.forEach { log ->
+            logList.addView(card().apply {
+                addView(label("${log.type} - ${log.status}", 17, true))
+                addView(label("Attendee: ${log.attendeeName}"))
+                addView(label("Timestamp: ${log.timestamp}"))
+                addView(label("Staff: ${log.staffName} (${log.staffId})"))
+                if (log.status == "Rejected") addView(label("Rejection reason: ${log.reason}", color = "#B3261E"))
+                addView(primaryButton("View Transaction") { renderDetails(log) })
+            })
+        }
+        renderDetails(logs.first())
+    }
+
+    private fun renderDetails(log: OrganizerMvpTransaction) {
+        details.removeAllViews()
+        details.addView(card().apply {
+            addView(label("Transaction ID: ${log.id}", 16, true))
+            addView(label("Event: ${log.eventTitle} (${log.eventId})"))
+            addView(label("Attendee: ${log.attendeeName} (${log.attendeeId})"))
+            addView(label("Staff: ${log.staffName} (${log.staffId})"))
+            addView(label("Scan purpose: ${log.scanPurpose}"))
+            addView(label("Result status: ${log.status}"))
+            addView(label("Reason/message: ${log.reason}"))
+            addView(label("Created timestamp: ${log.timestamp}"))
+        })
+    }
+}
+
+open class EventReportsActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+    private lateinit var selector: Spinner
+    private lateinit var reportType: Spinner
+    private lateinit var reportContent: LinearLayout
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repository = OrganizerRepository(this)
+        val events = repository.getApprovedOrganizerEvents()
+        val content = mvpPage(
+            title = "Event Reports",
+            subtitle = "Summaries, attendance analytics, transaction breakdowns, rejected scans, rewards, and recent activity.",
+        )
+        selector = eventSelector(events) { render() }
+        reportType = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@EventReportsActivity,
+                android.R.layout.simple_spinner_item,
+                listOf("Full report", "Attendance", "Transactions", "Rewards"),
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        }
+        reportContent = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(label("Event selector", 15, true))
+        content.addView(selector)
+        content.addView(EditText(this).apply {
+            hint = "Date range placeholder, e.g. 2026-05-26 to 2026-05-30"
+        })
+        content.addView(reportType)
+        content.addView(primaryButton("Generate Report") {
+            // TODO: Connect to backend report generation endpoint.
+            Toast.makeText(this, "Report generation placeholder", Toast.LENGTH_SHORT).show()
+            render()
+        })
+        content.addView(primaryButton("Export / Download Report") {
+            // TODO: Connect to backend export/download implementation.
+            Toast.makeText(this, "Export placeholder: backend integration pending", Toast.LENGTH_SHORT).show()
+        })
+        content.addView(reportContent)
+        reportType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = render()
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        render()
+    }
+
+    private fun render() {
+        if (!::selector.isInitialized || !::reportContent.isInitialized) return
+        val event = repository.getApprovedOrganizerEvents()[selector.selectedItemPosition.coerceAtLeast(0)]
+        val logs = repository.getOrganizerTransactions(event.id)
+        reportContent.removeAllViews()
+        reportContent.addView(section("Summary Cards"))
+        listOf(
+            "Total registered" to event.registeredCount,
+            "Total entered/checked-in" to event.enteredCount,
+            "Total attended" to event.attendedCount,
+            "No-shows" to event.noShowCount,
+            "Total benefit claims" to event.benefitClaims,
+            "Booth/session visits" to event.boothSessionVisits,
+            "Reward redemptions" to event.rewardRedemptions,
+            "Rejected scans" to event.rejectedScans,
+            "Total points awarded" to event.totalPointsAwarded,
+        ).forEach { reportContent.addView(statCard(it.first, it.second.toString())) }
+
+        reportContent.addView(section("Attendance Summary"))
+        reportContent.addView(label("Registered ${event.registeredCount}, entered ${event.enteredCount}, attended ${event.attendedCount}, exited ${event.exitedCount}, no-shows ${event.noShowCount}."))
+        reportContent.addView(section("Transaction Summary by Type"))
+        reportContent.addView(label(logs.groupingBy { it.type }.eachCount().ifEmpty { mapOf("No transactions" to 0) }.entries.joinToString("\n") { "${it.key}: ${it.value}" }))
+        reportContent.addView(section("Rejected Transaction Summary"))
+        reportContent.addView(label(logs.filter { it.status == "Rejected" }.ifEmpty { emptyList() }.joinToString("\n") { "${it.timestamp}: ${it.reason}" }.ifBlank { "No rejected scans." }))
+        reportContent.addView(section("Points/Rewards Summary"))
+        reportContent.addView(label("Points awarded: ${event.totalPointsAwarded}\nReward redemptions: ${event.rewardRedemptions}\nRewards status: ${event.rewardsStatus}"))
+        reportContent.addView(section("Recent Activity"))
+        reportContent.addView(label(logs.take(5).joinToString("\n") { "${it.timestamp}: ${it.type} for ${it.attendeeName} (${it.status})" }.ifBlank { "No recent activity." }))
+    }
+}
+
+open class ManageUsersActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+    private lateinit var selector: Spinner
+    private lateinit var searchInput: EditText
+    private lateinit var results: LinearLayout
+    private lateinit var assigned: LinearLayout
+    private val assignedStaff = OrganizerMvpPlaceholders.staff.toMutableList()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repository = OrganizerRepository(this)
+        val events = repository.getApprovedOrganizerEvents()
+        val content = mvpPage(
+            title = "Manage Staff Access",
+            subtitle = "Assign or remove staff access for an approved event. Organizer-only access is preserved by navigation role routing.",
+        )
+        selector = eventSelector(events) { renderAssigned() }
+        searchInput = EditText(this).apply { hint = "Search user by name or email" }
+        results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        assigned = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(label("Event selector", 15, true))
+        content.addView(selector)
+        content.addView(searchInput)
+        content.addView(primaryButton("Search Users") { renderSearch() })
+        content.addView(stateBox(
+            "User not found: shown when search has no matches.",
+            "Duplicate staff assignment: add action is blocked.",
+            "Unauthorized organizer: TODO backend authorization check.",
+            "Save/update failure: TODO backend error handling.",
+        ))
+        content.addView(section("Available/Search Result Users"))
+        content.addView(results)
+        content.addView(section("Currently Assigned Staff"))
+        content.addView(assigned)
+        searchInput.afterTextChanged { renderSearch() }
+        renderSearch()
+        renderAssigned()
+    }
+
+    private fun selectedEvent(): OrganizerMvpEvent =
+        repository.getApprovedOrganizerEvents()[selector.selectedItemPosition.coerceAtLeast(0)]
+
+    private fun renderSearch() {
+        if (!::results.isInitialized) return
+        val event = selectedEvent()
+        val users = repository.searchAvailableStaffUsers(searchInput.text.toString())
+        results.removeAllViews()
+        if (users.isEmpty()) {
+            results.addView(label("Validation: user not found."))
+            return
+        }
+        users.forEach { user ->
+            results.addView(staffCard(user.copy(assignedEventId = event.id, assignedEvent = event.title), showAdd = true))
+        }
+    }
+
+    private fun renderAssigned() {
+        if (!::assigned.isInitialized) return
+        val event = selectedEvent()
+        val staffForEvent = assignedStaff.filter { it.assignedEventId == event.id }
+        assigned.removeAllViews()
+        if (staffForEvent.isEmpty()) {
+            assigned.addView(label("Empty state: no staff assigned to ${event.title}."))
+            return
+        }
+        staffForEvent.forEach { assigned.addView(staffCard(it, showAdd = false)) }
+    }
+
+    private fun staffCard(staff: OrganizerMvpStaff, showAdd: Boolean): LinearLayout =
+        card().apply {
+            addView(label(staff.name, 17, true))
+            addView(label(staff.email))
+            addView(label("Assigned event: ${staff.assignedEvent}"))
+            addView(label("Access status: ${staff.accessStatus}"))
+            addView(label("Allowed actions/permissions: ${staff.permissions.ifEmpty { listOf("Entry scans", "Attendance scans") }.joinToString(", ")}"))
+            if (showAdd) {
+                addView(primaryButton("Add staff to event") {
+                    if (assignedStaff.any { it.email == staff.email && it.assignedEventId == staff.assignedEventId }) {
+                        Toast.makeText(this@ManageUsersActivity, "Duplicate staff assignment", Toast.LENGTH_SHORT).show()
+                    } else {
+                        assignedStaff.add(staff.copy(accessStatus = "Enabled"))
+                        Toast.makeText(this@ManageUsersActivity, "Staff added locally", Toast.LENGTH_SHORT).show()
+                        renderAssigned()
+                    }
+                })
+            } else {
+                addView(primaryButton("Enable/disable staff access") {
+                    val index = assignedStaff.indexOfFirst { it.id == staff.id && it.assignedEventId == staff.assignedEventId }
+                    if (index >= 0) {
+                        val newStatus = if (assignedStaff[index].accessStatus == "Enabled") "Disabled" else "Enabled"
+                        assignedStaff[index] = assignedStaff[index].copy(accessStatus = newStatus)
+                        renderAssigned()
+                    }
+                })
+                addView(primaryButton("View staff details") {
+                    AlertDialog.Builder(this@ManageUsersActivity)
+                        .setTitle(staff.name)
+                        .setMessage("Email: ${staff.email}\nEvent: ${staff.assignedEvent}\nStatus: ${staff.accessStatus}\nPermissions: ${staff.permissions.joinToString(", ")}")
+                        .setPositiveButton("Close", null)
+                        .show()
+                })
+                addView(primaryButton("Remove staff from event") {
+                    AlertDialog.Builder(this@ManageUsersActivity)
+                        .setTitle("Remove staff?")
+                        .setMessage("Remove ${staff.name} from ${staff.assignedEvent}?")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Remove") { _, _ ->
+                            assignedStaff.removeAll { it.id == staff.id && it.assignedEventId == staff.assignedEventId }
+                            renderAssigned()
+                        }
+                        .show()
+                })
             }
+        }
+}
+
+open class ManageScanPurposesActivity : AppCompatActivity() {
+    private lateinit var repository: OrganizerRepository
+    private lateinit var content: LinearLayout
+    private val purposeViews = mutableListOf<Pair<OrganizerMvpScanPurpose, LinearLayout>>()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        repository = OrganizerRepository(this)
+        content = mvpPage(
+            title = "Scan Purpose Management",
+            subtitle = "Configure scan purposes and transaction rules for staff scanning.",
+        )
+        content.addView(label("Event selector", 15, true))
+        content.addView(eventSelector(repository.getApprovedOrganizerEvents()) { })
+        content.addView(section("Scan Purposes"))
+        repository.getOrganizerScanPurposes().forEach { purpose ->
+            val purposeCard = scanPurposeCard(purpose)
+            purposeViews.add(purpose to purposeCard)
+            content.addView(purposeCard)
+        }
+        content.addView(section("Transaction Rules"))
+        listOf(
+            "Prevent duplicate entry",
+            "Prevent duplicate attendance if configured",
+            "Prevent duplicate benefit claim",
+            "Prevent duplicate reward claim",
+            "Reject wrong event QR",
+            "Reject inactive/invalid registration",
+            "Reject unauthorized staff scan",
+        ).forEach { content.addView(CheckBox(this).apply { text = it; isChecked = true }) }
+        content.addView(stateBox(
+            "Validation: conflicting rules are blocked before save.",
+            "Validation: invalid point values must be zero or greater.",
+        ))
+        content.addView(primaryButton("Add/Edit scan purpose rule") {
+            Toast.makeText(this, "Edit placeholder: fields are editable above", Toast.LENGTH_SHORT).show()
+        })
+        content.addView(primaryButton("Save configuration") { validateAndSave() })
+        content.addView(primaryButton("Reset / Cancel changes") {
+            Toast.makeText(this, "Changes reset placeholder", Toast.LENGTH_SHORT).show()
+            recreate()
+        })
+    }
+
+    private fun scanPurposeCard(purpose: OrganizerMvpScanPurpose): LinearLayout =
+        card().apply {
+            addView(label(purpose.label, 17, true))
+            addView(CheckBox(this@ManageScanPurposesActivity).apply { text = "Enabled"; isChecked = purpose.enabled })
+            addView(EditText(this@ManageScanPurposesActivity).apply {
+                hint = "Duplicate rule setting"
+                setText(purpose.duplicateRule)
+            })
+            addView(CheckBox(this@ManageScanPurposesActivity).apply { text = "Tracking-only"; isChecked = purpose.trackingOnly })
+            addView(CheckBox(this@ManageScanPurposesActivity).apply { text = "Points enabled"; isChecked = purpose.pointsEnabled })
+            addView(EditText(this@ManageScanPurposesActivity).apply {
+                hint = "Points value"
+                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+                setText(purpose.pointsValue.toString())
+            })
+            addView(EditText(this@ManageScanPurposesActivity).apply {
+                hint = "Required selection label"
+                setText(purpose.requiredSelectionLabel)
+            })
+        }
+
+    private fun validateAndSave() {
+        val errors = mutableListOf<String>()
+        purposeViews.forEach { (purpose, view) ->
+            val trackingOnly = (view.getChildAt(3) as CheckBox).isChecked
+            val pointsEnabled = (view.getChildAt(4) as CheckBox).isChecked
+            val pointsValue = (view.getChildAt(5) as EditText).text.toString().toIntOrNull()
+            if (pointsValue == null || pointsValue < 0) errors.add("${purpose.label}: invalid point value")
+            if (trackingOnly && pointsEnabled) errors.add("${purpose.label}: tracking-only cannot award points in this MVP rule set")
+        }
+        if (errors.isNotEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Validation errors")
+                .setMessage(errors.joinToString("\n"))
+                .setPositiveButton("OK", null)
+                .show()
+        } else {
+            // TODO: Persist scan purpose configuration to backend.
+            Toast.makeText(this, "Configuration saved locally", Toast.LENGTH_SHORT).show()
         }
     }
 }
@@ -678,24 +797,39 @@ open class AttendeeManagementActivity : AppCompatActivity() {
 open class AttendeeDetailsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_attendee_details)
-        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        
-        val attendeeId = intent.getStringExtra("extra_attendee_id")
-        // Load details using repository
+        val attendeeId = intent.getStringExtra("extra_attendee_id").orEmpty()
+        val attendee = OrganizerMvpPlaceholders.attendees.firstOrNull { it.id == attendeeId }
+        val content = mvpPage(
+            title = "Attendee Details",
+            subtitle = "Standalone attendee detail placeholder.",
+        )
+        content.gravity = Gravity.NO_GRAVITY
+        content.addView(label(attendee?.let {
+            "${it.name}\n${it.email}\n${it.phone}\nStatus: ${it.currentEventStatus}\nPoints: ${it.points}"
+        } ?: "Attendee detail placeholder. Select a row from Attendee Management to pass an attendee ID."))
     }
 }
 
-open class EventReportsActivity : AppCompatActivity() {
-    private lateinit var repository: OrganizerRepository
+open class ReportsActivity : EventReportsActivity()
 
+open class ManageRewardsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_event_reports)
-        repository = OrganizerRepository(this)
-        
-        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        
-        // Setup placeholders or load real data
+        val content = mvpPage(
+            title = "Reward Management",
+            subtitle = "Existing reward management placeholder. Organizer reports and event details show reward status for this MVP.",
+        )
+        content.addView(label(OrganizerMvpPlaceholders.TODO_BACKEND))
+    }
+}
+
+open class NotificationManagementActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val content = mvpPage(
+            title = "Notification Management",
+            subtitle = "Existing notification management placeholder retained for organizer navigation safety.",
+        )
+        content.addView(label(OrganizerMvpPlaceholders.TODO_BACKEND))
     }
 }

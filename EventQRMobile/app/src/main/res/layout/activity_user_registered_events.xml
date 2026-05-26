@@ -141,4 +141,19 @@
         app:layout_constraintTop_toBottomOf="@id/filterDivider"
         tools:listitem="@layout/item_registered_event" />
 
+    <TextView
+        android:id="@+id/txtRegisteredEventsEmpty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="24dp"
+        android:text="No registered events yet."
+        android:textColor="@color/eventqr_muted"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/recyclerRegisteredEvents"
+        app:layout_constraintEnd_toEndOf="@id/recyclerRegisteredEvents"
+        app:layout_constraintStart_toStartOf="@id/recyclerRegisteredEvents"
+        app:layout_constraintTop_toTopOf="@id/recyclerRegisteredEvents" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
