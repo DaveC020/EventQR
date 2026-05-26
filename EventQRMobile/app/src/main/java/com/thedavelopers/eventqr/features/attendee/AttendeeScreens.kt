@@ -7,17 +7,15 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import com.thedavelopers.eventqr.Dashboard
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.session.SessionManager
@@ -38,7 +36,6 @@ import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.util.Comparator.nullsLast
 import java.util.UUID
 
 interface AttendeeView {
@@ -133,6 +130,7 @@ open class AttendeeEventsActivity : AppCompatActivity(), EventsContract.View {
                 .putExtra(EXTRA_EVENT_TITLE, event.title)
                 .putExtra(EXTRA_EVENT_LOCATION, event.location ?: "")
                 .putExtra(EXTRA_EVENT_DESCRIPTION, event.description ?: "")
+                .putExtra(EXTRA_EVENT_CATEGORY, event.category ?: "")
                 .putExtra(EXTRA_EVENT_START, DateFormatters.formatInstant(event.eventStartAt))
                 .putExtra(EXTRA_EVENT_END, DateFormatters.formatInstant(event.eventEndAt))
                 .putExtra(EXTRA_EVENT_STATUS, computedStatusLabel(event))
@@ -319,6 +317,7 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         findViewById<TextView>(R.id.txtDetailTitle).text = intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty()
         findViewById<TextView>(R.id.txtDetailDescription).text = intent.getStringExtra(EXTRA_EVENT_DESCRIPTION).orEmpty()
         findViewById<TextView>(R.id.txtDetailVenue).text = intent.getStringExtra(EXTRA_EVENT_LOCATION).orEmpty().ifBlank { "Location not specified" }
+        findViewById<TextView>(R.id.txtTagCategory).text = intent.getStringExtra(EXTRA_EVENT_CATEGORY).orEmpty().ifBlank { "Technology" }
         findViewById<TextView>(R.id.txtDetailStart).text = intent.getStringExtra(EXTRA_EVENT_START).orEmpty()
         findViewById<TextView>(R.id.txtDetailStatus).text = intent.getStringExtra(EXTRA_EVENT_STATUS).orEmpty()
         findViewById<TextView>(R.id.txtDetailCapacity).text = "${intent.getStringExtra(EXTRA_EVENT_COUNT).orEmpty()} / ${intent.getStringExtra(EXTRA_EVENT_CAPACITY).orEmpty()} Registered"
@@ -331,18 +330,18 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         }
 
         // Hide non-existent fields as per requirements
-        findViewById<View>(R.id.txtTagCategory)?.visibility = View.GONE
-        findViewById<View>(R.id.txtBadgeFeatured)?.visibility = View.GONE
+        findViewById<View>(R.id.layoutDetailCategory)?.visibility = View.GONE
         findViewById<View>(R.id.layoutDetailRewards)?.visibility = View.GONE
         findViewById<View>(R.id.layoutDetailAgenda)?.visibility = View.GONE
+
+        findViewById<Button>(R.id.btnViewRewards).setOnClickListener {
+            startActivity(Intent(this, AttendeeRewardsActivity::class.java).putExtra(EXTRA_EVENT_ID, eventId))
+        }
         
         findViewById<Button>(R.id.btnRegisterForEvent).setOnClickListener {
             currentEvent?.let { event ->
                 presenter.registerForEvent(eventId, event.title)
             } ?: presenter.registerForEvent(eventId, intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty())
-        }
-        findViewById<Button>(R.id.btnViewRewards).setOnClickListener {
-            startActivity(Intent(this, AttendeeRewardsActivity::class.java).putExtra(EXTRA_EVENT_ID, eventId))
         }
 
         if (eventId.isNotBlank()) {
@@ -362,8 +361,16 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         val endStr = if (event.eventEndAt != null) " - ${DateFormatters.formatInstant(event.eventEndAt)}" else ""
         findViewById<TextView>(R.id.txtDetailStart).text = if (event.eventStartAt != null) "$startStr$endStr" else "Date and time not specified."
         
-        findViewById<TextView>(R.id.txtDetailStatus).text = computedStatusLabel(event)
         findViewById<TextView>(R.id.txtDetailCapacity).text = "${event.currentAttendeeCount} / ${event.capacity} Registered"
+        
+        if (!event.category.isNullOrBlank()) {
+            findViewById<View>(R.id.layoutDetailCategory)?.visibility = View.VISIBLE
+            findViewById<TextView>(R.id.txtTagCategory).text = event.category
+        } else {
+            findViewById<View>(R.id.layoutDetailCategory)?.visibility = View.GONE
+        }
+        
+        findViewById<View>(R.id.layoutDetailRewards)?.visibility = if (event.rewardsEnabled) View.VISIBLE else View.GONE
         
         updateRegisterButton(event)
     }
@@ -412,6 +419,11 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
             btn.isEnabled = false
             btn.text = "Already Registered"
             btn.setBackgroundResource(R.drawable.bg_disabled_button)
+            
+            // Show View Rewards button if event supports it
+            if (currentEvent?.rewardsEnabled == true) {
+                findViewById<View>(R.id.btnViewRewards)?.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -491,9 +503,13 @@ interface RegistrationContract {
 open class AttendeeRegistrationActivity : AppCompatActivity(), RegistrationContract.View {
     private lateinit var presenter: RegistrationPresenter
     private lateinit var eventId: String
-    private lateinit var fullNameInput: EditText
+    private lateinit var firstNameInput: EditText
+    private lateinit var lastNameInput: EditText
     private lateinit var emailInput: EditText
     private lateinit var phoneInput: EditText
+    private lateinit var studentIdInput: EditText
+    private lateinit var dietaryInput: EditText
+    private lateinit var emergencyInput: EditText
     private lateinit var submitButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -503,18 +519,33 @@ open class AttendeeRegistrationActivity : AppCompatActivity(), RegistrationContr
         presenter = RegistrationPresenter(this, AttendeeRepository(this))
         eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
 
-        fullNameInput = findViewById(R.id.edtRegistrationFullName)
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
+        findViewById<Button>(R.id.btnCancel).setOnClickListener { finish() }
+
+        firstNameInput = findViewById(R.id.edtRegistrationFirstName)
+        lastNameInput = findViewById(R.id.edtRegistrationLastName)
         emailInput = findViewById(R.id.edtRegistrationEmail)
         phoneInput = findViewById(R.id.edtRegistrationPhone)
+        studentIdInput = findViewById(R.id.edtRegistrationStudentId)
+        emergencyInput = findViewById(R.id.edtEmergencyContact)
         submitButton = findViewById(R.id.btnSubmitRegistration)
 
-        fullNameInput.setText(intent.getStringExtra(EXTRA_PREFILL_FULL_NAME).orEmpty())
+        val fullPrefillName = intent.getStringExtra(EXTRA_PREFILL_FULL_NAME).orEmpty()
+        if (fullPrefillName.contains(" ")) {
+            val parts = fullPrefillName.split(" ", limit = 2)
+            firstNameInput.setText(parts[0])
+            lastNameInput.setText(parts[1])
+        } else {
+            firstNameInput.setText(fullPrefillName)
+        }
+        
         emailInput.setText(intent.getStringExtra(EXTRA_PREFILL_EMAIL).orEmpty())
 
         submitButton.setOnClickListener {
+            val fullName = "${firstNameInput.text} ${lastNameInput.text}".trim()
             presenter.submit(
                 eventId,
-                fullNameInput.text.toString(),
+                fullName,
                 emailInput.text.toString(),
                 phoneInput.text.toString(),
             )
@@ -537,7 +568,7 @@ open class AttendeeRegistrationActivity : AppCompatActivity(), RegistrationContr
 
     override fun showFieldError(field: String, message: String?) {
         when (field) {
-            "fullName" -> fullNameInput.error = message
+            "fullName" -> firstNameInput.error = message
             "email" -> emailInput.error = message
         }
     }
@@ -562,17 +593,27 @@ class QrCredentialPresenter(
     fun load(registrationId: String) {
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getQrCredentialByRegistration(registrationId)) {
-                is NetworkResult.Success -> {
-                    view?.showLoading(false)
-                    view?.renderQr(result.data)
-                    result.data.qrCredentialId.toString().also { repository.markQrDisplayed(it) }
+            val qrResult = repository.getQrCredentialByRegistration(registrationId)
+            if (qrResult is NetworkResult.Success) {
+                val regResult = repository.getRegistration(registrationId)
+                var eventTitle: String? = null
+                if (regResult is NetworkResult.Success) {
+                    val eventResult = repository.getEvent(regResult.data.eventId.toString())
+                    if (eventResult is NetworkResult.Success) {
+                        eventTitle = eventResult.data.title
+                    }
                 }
-                is NetworkResult.Error -> {
-                    view?.showLoading(false)
-                    view?.showMessage(result.message)
-                }
-                NetworkResult.Loading -> Unit
+                
+                view?.showLoading(false)
+                view?.renderQr(
+                    qrResult.data,
+                    (regResult as? NetworkResult.Success)?.data,
+                    eventTitle
+                )
+                qrResult.data.qrCredentialId.toString().also { repository.markQrDisplayed(it) }
+            } else if (qrResult is NetworkResult.Error) {
+                view?.showLoading(false)
+                view?.showMessage(qrResult.message)
             }
         }
     }
@@ -584,7 +625,7 @@ class QrCredentialPresenter(
 
 interface QrCredentialContract {
     interface View : AttendeeView {
-        fun renderQr(snapshot: QrCredentialSnapshot)
+        fun renderQr(snapshot: QrCredentialSnapshot, registration: RegistrationResponse?, eventTitle: String?)
     }
 }
 
@@ -594,6 +635,10 @@ open class AttendeeQrCredentialActivity : AppCompatActivity(), QrCredentialContr
     private lateinit var qrText: TextView
     private lateinit var loadingText: TextView
     private lateinit var markDownloadedButton: Button
+    private lateinit var attendeeNameText: TextView
+    private lateinit var attendeeEmailText: TextView
+    private lateinit var credentialIdText: TextView
+    private lateinit var eventNameText: TextView
     private var currentQrCredentialId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -605,6 +650,12 @@ open class AttendeeQrCredentialActivity : AppCompatActivity(), QrCredentialContr
         qrText = findViewById(R.id.txtQrValue)
         loadingText = findViewById(R.id.txtQrLoading)
         markDownloadedButton = findViewById(R.id.btnMarkQrDownloaded)
+        attendeeNameText = findViewById(R.id.txtQrAttendeeName)
+        attendeeEmailText = findViewById(R.id.txtQrAttendeeEmail)
+        credentialIdText = findViewById(R.id.txtQrCredentialValue)
+        eventNameText = findViewById(R.id.txtQrEventName)
+
+        findViewById<View>(R.id.btnCloseQr)?.setOnClickListener { finish() }
 
         findViewById<Button>(R.id.btnLoadQr).setOnClickListener {
             presenter.load(findViewById<EditText>(R.id.edtQrRegistrationId).text.toString())
@@ -635,10 +686,15 @@ open class AttendeeQrCredentialActivity : AppCompatActivity(), QrCredentialContr
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
-    override fun renderQr(snapshot: QrCredentialSnapshot) {
+    override fun renderQr(snapshot: QrCredentialSnapshot, registration: RegistrationResponse?, eventTitle: String?) {
         currentQrCredentialId = snapshot.qrCredentialId.toString()
         qrText.text = snapshot.qrValue
         qrImage.setImageBitmap(renderQrBitmap(snapshot.qrValue))
+        
+        credentialIdText.text = "QR-${snapshot.eventId.toString().take(4).uppercase()}-${snapshot.qrCredentialId.toString().take(8).uppercase()}"
+        attendeeNameText.text = registration?.attendeeName ?: "Attendee"
+        attendeeEmailText.text = registration?.attendeeEmail ?: "-"
+        eventNameText.text = eventTitle ?: "Event"
     }
 
     private fun renderQrBitmap(value: String): Bitmap {
@@ -653,11 +709,95 @@ open class AttendeeQrCredentialActivity : AppCompatActivity(), QrCredentialContr
     }
 }
 
-open class RegisteredEventsActivity : AppCompatActivity() {
+class RegisteredEventsPresenter(
+    private var view: RegisteredEventsContract.View?,
+    private val repository: AttendeeRepository,
+) {
+    private var job: Job? = null
+
+    fun detach() {
+        job?.cancel()
+        view = null
+    }
+
+    fun load() {
+        view?.showLoading(true)
+        job = kotlinx.coroutines.MainScope().launch {
+            val sessionManager = SessionManager((view as? AppCompatActivity) ?: return@launch)
+            val userId = sessionManager.getUserId().orEmpty()
+            
+            // First get all registrations for the user
+            // Note: The backend might need an endpoint for registrations by user. 
+            // If not available, we get all events and filter.
+            val eventsResult = repository.getEvents()
+            if (eventsResult is NetworkResult.Success) {
+                val registeredEvents = mutableListOf<Pair<AttendeeEventResponse, RegistrationResponse>>()
+                for (event in eventsResult.data) {
+                    val regsResult = repository.getRegistrationsByEvent(event.eventId.toString())
+                    if (regsResult is NetworkResult.Success) {
+                        val userReg = regsResult.data.find { it.attendeeUserId.toString() == userId }
+                        if (userReg != null) {
+                            registeredEvents.add(event to userReg)
+                        }
+                    }
+                }
+                view?.showLoading(false)
+                view?.showRegisteredEvents(registeredEvents)
+            } else if (eventsResult is NetworkResult.Error) {
+                view?.showLoading(false)
+                view?.showMessage(eventsResult.message)
+            }
+        }
+    }
+}
+
+interface RegisteredEventsContract {
+    interface View : AttendeeView {
+        fun showRegisteredEvents(items: List<Pair<AttendeeEventResponse, RegistrationResponse>>)
+    }
+}
+
+open class RegisteredEventsActivity : AppCompatActivity(), RegisteredEventsContract.View {
+    private lateinit var presenter: RegisteredEventsPresenter
+    private lateinit var adapter: RegisteredEventAdapter
+    private lateinit var loadingView: View
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_registered_events)
-        findViewById<TextView>(R.id.txtRegisteredEventsMessage).text = "My registered events endpoint is not available yet, so this screen is a foundation only."
+
+        presenter = RegisteredEventsPresenter(this, AttendeeRepository(this))
+        loadingView = findViewById(R.id.txtRegisteredEventsEmpty) // Using empty text as loading for now
+
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
+            finish()
+        }
+
+        adapter = RegisteredEventAdapter()
+        findViewById<RecyclerView>(R.id.recyclerRegisteredEvents).apply {
+            layoutManager = LinearLayoutManager(this@RegisteredEventsActivity)
+            adapter = this@RegisteredEventsActivity.adapter
+        }
+        
+        presenter.load()
+    }
+
+    override fun onDestroy() {
+        presenter.detach()
+        super.onDestroy()
+    }
+
+    override fun showLoading(isLoading: Boolean) {
+        // Handle loading state
+    }
+
+    override fun showMessage(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun showRegisteredEvents(items: List<Pair<AttendeeEventResponse, RegistrationResponse>>) {
+        adapter.submitItems(items)
+        findViewById<View>(R.id.txtRegisteredEventsEmpty).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 }
 
@@ -701,28 +841,37 @@ open class AttendeeTransactionsActivity : AppCompatActivity(), TransactionHistor
     private lateinit var adapter: TransactionAdapter
     private lateinit var loadingText: TextView
     private lateinit var emptyText: TextView
+    private lateinit var eventTitleText: TextView
+    private lateinit var totalEarnedText: TextView
+    private lateinit var totalRedeemedText: TextView
+    private lateinit var currentBalanceText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_transactions)
+        setContentView(R.layout.activity_transaction_history)
 
         presenter = TransactionHistoryPresenter(this, AttendeeRepository(this))
-        adapter = TransactionAdapter()
+        
         loadingText = findViewById(R.id.txtTransactionsLoading)
         emptyText = findViewById(R.id.txtTransactionsEmpty)
+        eventTitleText = findViewById(R.id.txtHistoryEventTitle)
+        totalEarnedText = findViewById(R.id.txtHistoryTotalEarned)
+        totalRedeemedText = findViewById(R.id.txtHistoryTotalRedeemed)
+        currentBalanceText = findViewById(R.id.txtHistoryCurrentBalance)
+        
+        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
 
+        val eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty()
+        eventTitleText.text = eventTitle.ifBlank { "Event Transactions" }
+        
+        adapter = TransactionAdapter(eventTitle)
         findViewById<RecyclerView>(R.id.recyclerTransactions).apply {
             layoutManager = LinearLayoutManager(this@AttendeeTransactionsActivity)
             adapter = this@AttendeeTransactionsActivity.adapter
         }
 
-        findViewById<Button>(R.id.btnLoadTransactions).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtTransactionsEventId).text.toString())
-        }
-
         val eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
         if (eventId.isNotBlank()) {
-            findViewById<EditText>(R.id.edtTransactionsEventId).setText(eventId)
             presenter.load(eventId)
         } else {
             emptyText.text = "Select an event to view transaction history."
@@ -747,6 +896,14 @@ open class AttendeeTransactionsActivity : AppCompatActivity(), TransactionHistor
         emptyText.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         emptyText.text = if (items.isEmpty()) "No transactions found for this event." else emptyText.text
         adapter.submitItems(items)
+        
+        val earned = items.filter { it.pointsDelta > 0 }.sumOf { it.pointsDelta }
+        val redeemed = items.filter { it.pointsDelta < 0 }.sumOf { it.pointsDelta }
+        val balance = earned + redeemed
+        
+        totalEarnedText.text = "+$earned"
+        totalRedeemedText.text = "$redeemed"
+        currentBalanceText.text = "$balance pts"
     }
 }
 
@@ -1116,6 +1273,7 @@ const val EXTRA_EVENT_END = "extra_event_end"
 const val EXTRA_EVENT_STATUS = "extra_event_status"
 const val EXTRA_EVENT_CAPACITY = "extra_event_capacity"
 const val EXTRA_EVENT_COUNT = "extra_event_count"
+const val EXTRA_EVENT_CATEGORY = "extra_event_category"
 const val EXTRA_PREFILL_EMAIL = "extra_prefill_email"
 const val EXTRA_PREFILL_FULL_NAME = "extra_prefill_full_name"
 const val EXTRA_REGISTRATION_ID = "extra_registration_id"
