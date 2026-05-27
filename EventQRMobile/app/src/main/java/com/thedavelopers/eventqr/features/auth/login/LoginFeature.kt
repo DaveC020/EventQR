@@ -75,13 +75,14 @@ class LoginPresenter(
                 is NetworkResult.Success -> {
                     var loginResponse = result.data
                     repository.storeSession(loginResponse)
+                    var resolvedRole = loginResponse.role
                     
                     // If role is missing from login response, try to fetch it from /auth/me
-                    if (loginResponse.role == null) {
+                    if (resolvedRole == null) {
                         when (val meResult = repository.getAuthMe()) {
                             is NetworkResult.Success -> {
-                                loginResponse = meResult.data
-                                repository.storeSession(loginResponse)
+                                resolvedRole = meResult.data.role
+                                repository.saveUserRole(resolvedRole)
                             }
                             else -> {
                                 // If /auth/me fails, we'll proceed with whatever we have or default
@@ -89,15 +90,15 @@ class LoginPresenter(
                         }
                     }
 
-                    repository.saveUserRole(loginResponse.role)
+                    repository.saveUserRole(resolvedRole)
                     view?.showLoading(false)
                     view?.showMessage(result.message ?: loginResponse.message ?: "Login successful")
                     
-                    if (loginResponse.role == null) {
+                    if (resolvedRole == null) {
                         view?.showMessage("Unable to determine account role")
                     }
                     
-                    view?.navigateToDashboard(loginResponse.role?.name)
+                    view?.navigateToDashboard(resolvedRole?.name)
                 }
                 is NetworkResult.Error -> {
                     view?.showLoading(false)
@@ -178,8 +179,10 @@ open class LoginActivity : AppCompatActivity(), LoginContract.View {
         val normalizedRole = RoleMapper.normalizeRole(role)
         val destination = when (normalizedRole) {
             AccountRole.STAFF.name -> com.thedavelopers.eventqr.features.staff.StaffDashboardActivity::class.java
-            AccountRole.ORGANIZER.name, AccountRole.ADMIN.name, AccountRole.SUPER_ADMIN.name ->
+            AccountRole.ORGANIZER.name ->
                 com.thedavelopers.eventqr.features.organizer.OrganizerDashboardActivity::class.java
+            AccountRole.ADMIN.name, AccountRole.SUPER_ADMIN.name ->
+                com.thedavelopers.eventqr.features.admin.AdminEventApprovalBackendActivity::class.java
             AccountRole.ATTENDEE.name, AccountRole.USER.name -> Dashboard::class.java
             "" -> {
                 showMessage("Unable to determine account role")
