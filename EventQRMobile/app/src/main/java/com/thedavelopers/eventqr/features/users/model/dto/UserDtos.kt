@@ -20,3 +20,8 @@ data class UserResponse(
     val role: AccountRole,
     val status: AccountStatus,
 )
+
+data class ProfileUpdateRequest(
+    val fullName: String,
+    val phoneNumber: String? = null
+)

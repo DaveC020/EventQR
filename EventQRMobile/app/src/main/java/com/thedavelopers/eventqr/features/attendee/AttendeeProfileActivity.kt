@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.core.util.RoleMapper
 
 open class AttendeeProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,7 +18,7 @@ open class AttendeeProfileActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.txtProfileName).text =
             sessionManager.getFullName()?.takeIf { it.isNotBlank() } ?: "Attendee"
         findViewById<TextView>(R.id.txtProfileRole).text =
-            sessionManager.getUserRole()?.lowercase()?.replaceFirstChar { it.titlecase() } ?: "Attendee"
+            RoleMapper.getDisplayName(sessionManager.getUserRole())
         findViewById<TextView>(R.id.txtProfileEmail).text =
             sessionManager.getEmail()?.takeIf { it.isNotBlank() } ?: "No email saved"
         findViewById<Button>(R.id.btnEditProfile).setOnClickListener {

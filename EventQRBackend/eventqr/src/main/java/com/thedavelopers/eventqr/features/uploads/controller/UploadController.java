@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 
@@ -17,17 +19,17 @@ import com.thedavelopers.eventqr.shared.response.ApiResponse;
 public class UploadController {
 
     @PostMapping("/uploads/event-logo")
-    public ResponseEntity<ApiResponse<Void>> uploadEventLogo() {
+    public ResponseEntity<ApiResponse<Void>> uploadEventLogo(@RequestParam("file") MultipartFile file) {
         return notImplemented("File upload storage is not wired yet");
     }
 
     @PostMapping("/uploads/id-template-assets")
-    public ResponseEntity<ApiResponse<Void>> uploadTemplateAsset() {
+    public ResponseEntity<ApiResponse<Void>> uploadTemplateAsset(@RequestParam("file") MultipartFile file) {
         return notImplemented("File upload storage is not wired yet");
     }
 
     @PostMapping("/uploads/profile-photo")
-    public ResponseEntity<ApiResponse<Void>> uploadProfilePhoto() {
+    public ResponseEntity<ApiResponse<Void>> uploadProfilePhoto(@RequestParam("file") MultipartFile file) {
         return notImplemented("File upload storage is not wired yet");
     }
 

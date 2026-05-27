@@ -14,8 +14,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
+import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.DateFormatters
+import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.features.attendee.AttendeeBottomNavItem
 import com.thedavelopers.eventqr.features.attendee.AttendeeRepository
 import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_CAPACITY
@@ -190,6 +192,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         loadingText = findViewById(R.id.txtDashboardLoading)
         attendeeCard = findViewById(R.id.btnAttendeeHub)
         staffCard = findViewById(R.id.btnStaffHub)
+        organizerCard = findViewById(R.id.btnTransactionHistory)
         notificationsCard = findViewById(R.id.btnNotificationsHub)
         rewardsCard = findViewById(R.id.btnRewardsHub)
         reportsCard = findViewById(R.id.btnReportsHub)
@@ -399,9 +402,9 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     }
 
     private fun configureActions(role: String?) {
-        val normalizedRole = role?.uppercase().orEmpty()
+        val normalizedRole = RoleMapper.normalizeRole(role)
         when (normalizedRole) {
-            "STAFF" -> {
+            AccountRole.STAFF.name -> {
                 attendeeCard.text = "Scanner"
                 staffCard.text = "Transactions"
                 organizerCard.text = "ID Printing"
@@ -417,7 +420,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
                 rewardsCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeNotificationsActivity::class.java)) }
                 logoutCard.setOnClickListener { performLogout() }
             }
-            "ORGANIZER", "ADMIN" -> {
+            AccountRole.ORGANIZER.name, AccountRole.ADMIN.name, AccountRole.SUPER_ADMIN.name -> {
                 attendeeCard.text = "Manage Events"
                 staffCard.text = "Manage Users"
                 organizerCard.text = "Scan Purposes"
@@ -436,6 +439,7 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
                 logoutCard.setOnClickListener { performLogout() }
             }
             else -> {
+                // Default to Attendee / User
                 attendeeCard.text = "Browse Events"
                 staffCard.text = "My Events"
                 organizerCard.text = "Rewards"

@@ -15,7 +15,6 @@ import androidx.core.content.ContextCompat
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.SignIn
 import com.thedavelopers.eventqr.core.api.NetworkResult
-import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.util.Validators
 import com.thedavelopers.eventqr.features.auth.AuthRepository
 import kotlinx.coroutines.Job
@@ -105,7 +104,7 @@ class RegistrationPresenter(
         view?.showLoading(true)
         registrationJob = kotlinx.coroutines.MainScope().launch {
             val fullNameValue = listOf(firstNameValue, lastNameValue).filter { it.isNotBlank() }.joinToString(" ").trim()
-            when (val result = repository.createUser(fullNameValue, emailValue, phoneValue, passwordValue, AccountRole.ATTENDEE)) {
+            when (val result = repository.createUser(fullNameValue, emailValue, phoneValue, passwordValue)) {
                 is NetworkResult.Success -> {
                     view?.showLoading(false)
                     view?.showMessage(result.message ?: "Account created")

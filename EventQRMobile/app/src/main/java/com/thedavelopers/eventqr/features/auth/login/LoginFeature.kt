@@ -14,6 +14,7 @@ import com.thedavelopers.eventqr.Dashboard
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
+import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.core.util.Validators
 import com.thedavelopers.eventqr.features.auth.AuthRepository
 import kotlinx.coroutines.Job
@@ -69,16 +70,34 @@ class LoginPresenter(
             return
         }
 
-        view?.showLoading(true)
         loginJob = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.login(emailValue, passwordValue)) {
                 is NetworkResult.Success -> {
-                    val loginResponse = result.data
+                    var loginResponse = result.data
                     repository.storeSession(loginResponse)
+                    
+                    // If role is missing from login response, try to fetch it from /auth/me
+                    if (loginResponse.role == null) {
+                        when (val meResult = repository.getAuthMe()) {
+                            is NetworkResult.Success -> {
+                                loginResponse = meResult.data
+                                repository.storeSession(loginResponse)
+                            }
+                            else -> {
+                                // If /auth/me fails, we'll proceed with whatever we have or default
+                            }
+                        }
+                    }
+
                     repository.saveUserRole(loginResponse.role)
                     view?.showLoading(false)
                     view?.showMessage(result.message ?: loginResponse.message ?: "Login successful")
-                    view?.navigateToDashboard(loginResponse.role?.name ?: AccountRole.ATTENDEE.name)
+                    
+                    if (loginResponse.role == null) {
+                        view?.showMessage("Unable to determine account role")
+                    }
+                    
+                    view?.navigateToDashboard(loginResponse.role?.name)
                 }
                 is NetworkResult.Error -> {
                     view?.showLoading(false)
@@ -156,15 +175,24 @@ open class LoginActivity : AppCompatActivity(), LoginContract.View {
     }
 
     override fun navigateToDashboard(role: String?) {
-        val normalizedRole = role?.uppercase()
+        val normalizedRole = RoleMapper.normalizeRole(role)
         val destination = when (normalizedRole) {
             AccountRole.STAFF.name -> com.thedavelopers.eventqr.features.staff.StaffDashboardActivity::class.java
-            AccountRole.ORGANIZER.name, AccountRole.ADMIN.name -> com.thedavelopers.eventqr.features.organizer.OrganizerDashboardActivity::class.java
-            else -> Dashboard::class.java
+            AccountRole.ORGANIZER.name, AccountRole.ADMIN.name, AccountRole.SUPER_ADMIN.name ->
+                com.thedavelopers.eventqr.features.organizer.OrganizerDashboardActivity::class.java
+            AccountRole.ATTENDEE.name, AccountRole.USER.name -> Dashboard::class.java
+            "" -> {
+                showMessage("Unable to determine account role")
+                return
+            }
+            else -> {
+                showMessage("Unsupported account role: $normalizedRole")
+                return
+            }
         }
         startActivity(
             Intent(this, destination)
-                .putExtra("extra_role", role)
+                .putExtra("extra_role", normalizedRole)
         )
         finish()
     }
