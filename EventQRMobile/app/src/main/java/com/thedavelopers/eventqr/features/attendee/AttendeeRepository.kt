@@ -5,6 +5,7 @@ import com.thedavelopers.eventqr.core.api.ApiClient
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.api.safeApiCall
 import com.thedavelopers.eventqr.features.events.model.dto.AttendeeEventResponse
+import com.thedavelopers.eventqr.features.events.model.dto.EventCreationRequestDto
 import com.thedavelopers.eventqr.features.qrcredential.model.dto.QrCredentialSnapshot
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationRequest
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
@@ -21,6 +22,9 @@ class AttendeeRepository(context: Context) {
     private val apiService = ApiClient.getService(context)
     suspend fun getEvents() = safeApiCall { apiService.getAttendeeVisibleEvents() }
     suspend fun getEvent(eventId: String) = safeApiCall { apiService.getEventById(eventId) }
+    suspend fun createEventRequest(request: EventCreationRequestDto) = safeApiCall { apiService.createEventRequest(request) }
+    suspend fun getMyEventRequests() = safeApiCall { apiService.getMyEventRequests() }
+    suspend fun getMyProfile() = safeApiCall { apiService.getUsersMe() }
     suspend fun createRegistration(eventId: String, request: RegistrationRequest) = safeApiCall { apiService.createRegistration(eventId, request) }
     suspend fun getMyRegistrations() = safeApiCall { apiService.getMyRegistrations() }
     suspend fun createQrCredential(registrationId: String) = safeApiCall { apiService.createQrCredential(registrationId) }

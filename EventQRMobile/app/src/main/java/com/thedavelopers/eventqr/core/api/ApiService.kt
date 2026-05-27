@@ -11,8 +11,11 @@ import com.thedavelopers.eventqr.features.audit.model.dto.AuditLogRequest
 import com.thedavelopers.eventqr.features.audit.model.dto.AuditLogResponse
 import com.thedavelopers.eventqr.features.dashboard.model.dto.DashboardSummary
 import com.thedavelopers.eventqr.features.events.model.dto.AttendeeEventResponse
+import com.thedavelopers.eventqr.features.events.model.dto.EventCreationRequestDto
 import com.thedavelopers.eventqr.features.events.model.dto.EventApprovalRequest
 import com.thedavelopers.eventqr.features.events.model.dto.EventRequest
+import com.thedavelopers.eventqr.features.events.model.dto.EventRequestDecisionRequest
+import com.thedavelopers.eventqr.features.events.model.dto.EventRequestResponse
 import com.thedavelopers.eventqr.features.events.model.dto.EventResponse
 import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintRequest
 import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintResponse
@@ -124,6 +127,36 @@ interface ApiService {
 
     @GET("events/{eventId}")
     suspend fun getEventById(@Path("eventId") eventId: String): ApiResponse<AttendeeEventResponse>
+
+    @POST("event-requests")
+    suspend fun createEventRequest(@Body request: EventCreationRequestDto): ApiResponse<EventRequestResponse>
+
+    @GET("event-requests/me")
+    suspend fun getMyEventRequests(): ApiResponse<List<EventRequestResponse>>
+
+    @GET("event-requests/{requestId}")
+    suspend fun getEventRequest(@Path("requestId") requestId: String): ApiResponse<EventRequestResponse>
+
+    @GET("admin/event-requests")
+    suspend fun getAdminEventRequests(): ApiResponse<List<EventRequestResponse>>
+
+    @GET("admin/event-requests/{requestId}")
+    suspend fun getAdminEventRequest(@Path("requestId") requestId: String): ApiResponse<EventRequestResponse>
+
+    @PATCH("admin/event-requests/{requestId}/approve")
+    suspend fun approveEventRequest(
+        @Path("requestId") requestId: String,
+        @Body request: EventRequestDecisionRequest? = null,
+    ): ApiResponse<EventRequestResponse>
+
+    @PATCH("admin/event-requests/{requestId}/reject")
+    suspend fun rejectEventRequest(
+        @Path("requestId") requestId: String,
+        @Body request: EventRequestDecisionRequest? = null,
+    ): ApiResponse<EventRequestResponse>
+
+    @PATCH("admin/event-requests/{requestId}/upgrade-organizer")
+    suspend fun upgradeOrganizerFromEventRequest(@Path("requestId") requestId: String): ApiResponse<EventRequestResponse>
 
     @GET("organizer/events")
     suspend fun getOrganizerEvents(): ApiResponse<List<OrganizerEventDto>>

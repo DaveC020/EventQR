@@ -26,6 +26,12 @@ enum class EventStatus {
     CANCELLED,
 }
 
+enum class EventRequestStatus {
+    PENDING,
+    APPROVED,
+    REJECTED,
+}
+
 enum class RegistrationStatus {
     REGISTERED,
     ENTERED,
