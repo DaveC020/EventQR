@@ -16,7 +16,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
+import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.core.util.Validators
 import com.thedavelopers.eventqr.features.idprinting.IdPrintLogAdapter
 import com.thedavelopers.eventqr.features.idprinting.model.dto.IdPrintRequest
@@ -154,7 +156,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         preselectedEventId = intent.getStringExtra("EXTRA_EVENT_ID")
         
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return
@@ -333,7 +335,7 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
         super.onCreate(savedInstanceState)
 
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return
@@ -459,7 +461,7 @@ open class IdPrintingActivity : AppCompatActivity(), IdPrintingContract.View {
         super.onCreate(savedInstanceState)
 
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return
@@ -552,7 +554,7 @@ open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsC
         super.onCreate(savedInstanceState)
 
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return
@@ -648,7 +650,7 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
         super.onCreate(savedInstanceState)
 
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return
@@ -738,7 +740,7 @@ open class StaffProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         val sessionManager = SessionManager(this)
-        if (sessionManager.getUserRole() != "STAFF") {
+        if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
             return

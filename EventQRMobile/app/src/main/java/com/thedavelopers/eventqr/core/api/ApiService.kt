@@ -3,6 +3,12 @@ package com.thedavelopers.eventqr.core.api
 import com.thedavelopers.eventqr.core.api.dto.ApiResponse
 import com.thedavelopers.eventqr.features.auth.model.dto.LoginRequest
 import com.thedavelopers.eventqr.features.auth.model.dto.LoginResponse
+import com.thedavelopers.eventqr.features.auth.model.dto.RegisterRequest
+import com.thedavelopers.eventqr.features.auth.model.dto.ForgotPasswordRequest
+import com.thedavelopers.eventqr.features.auth.model.dto.ResetPasswordRequest
+import com.thedavelopers.eventqr.features.auth.model.dto.PasswordChangeRequest
+import com.thedavelopers.eventqr.features.audit.model.dto.AuditLogRequest
+import com.thedavelopers.eventqr.features.audit.model.dto.AuditLogResponse
 import com.thedavelopers.eventqr.features.dashboard.model.dto.DashboardSummary
 import com.thedavelopers.eventqr.features.events.model.dto.AttendeeEventResponse
 import com.thedavelopers.eventqr.features.events.model.dto.EventApprovalRequest
@@ -41,19 +47,50 @@ import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResp
 import com.thedavelopers.eventqr.features.users.model.dto.UserRequest
 import com.thedavelopers.eventqr.features.users.model.dto.UserResponse
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
+import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): ApiResponse<LoginResponse>
+
+    @POST("auth/register")
+    suspend fun register(@Body request: RegisterRequest): ApiResponse<UserResponse>
+
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): ApiResponse<Unit>
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): ApiResponse<Unit>
+
+    @POST("auth/logout")
+    suspend fun logout(): ApiResponse<Unit>
+
+    @PATCH("auth/me/password")
+    suspend fun changePassword(@Body request: PasswordChangeRequest): ApiResponse<UserResponse>
+
+    @GET("auth/me")
+    suspend fun getAuthMe(): ApiResponse<LoginResponse>
+
+    @GET("users/me")
+    suspend fun getUsersMe(): ApiResponse<UserResponse>
+
+    @PATCH("users/me")
+    suspend fun updateUsersMe(@Body request: com.thedavelopers.eventqr.features.users.model.dto.ProfileUpdateRequest): ApiResponse<UserResponse>
+
+    @Multipart
+    @POST("users/me/avatar")
+    suspend fun uploadAvatar(@Part file: MultipartBody.Part): ApiResponse<Unit>
 
     @POST("users")
     suspend fun createUser(@Body request: UserRequest): ApiResponse<UserResponse>
@@ -179,6 +216,31 @@ interface ApiService {
 
     @PATCH("qr-credentials/{qrCredentialId}/downloaded")
     suspend fun markQrDownloaded(@Path("qrCredentialId") qrCredentialId: String): ApiResponse<QrCredentialSnapshot>
+
+    @Multipart
+    @POST("organizer/events/{eventId}/id-template/logo")
+    suspend fun uploadIdTemplateLogo(@Path("eventId") eventId: String, @Part file: MultipartBody.Part): ApiResponse<Unit>
+
+    @Multipart
+    @POST("uploads/event-logo")
+    suspend fun uploadEventLogo(@Part file: MultipartBody.Part): ApiResponse<Unit>
+
+    @Multipart
+    @POST("uploads/id-template-assets")
+    suspend fun uploadIdTemplateAssets(@Part file: MultipartBody.Part): ApiResponse<Unit>
+
+    @Multipart
+    @POST("uploads/profile-photo")
+    suspend fun uploadProfilePhoto(@Part file: MultipartBody.Part): ApiResponse<Unit>
+
+    @GET("admin/audit-logs")
+    suspend fun getAdminAuditLogs(): ApiResponse<List<AuditLogResponse>>
+
+    @GET("organizer/events/{eventId}/audit-logs")
+    suspend fun getOrganizerAuditLogs(@Path("eventId") eventId: String): ApiResponse<List<AuditLogResponse>>
+
+    @POST("audit-logs")
+    suspend fun createAuditLog(@Body request: AuditLogRequest): ApiResponse<Unit>
 
     @POST("scan-purposes")
     suspend fun createScanPurpose(@Body request: ScanPurposeRequest): ApiResponse<ScanPurposeResponse>

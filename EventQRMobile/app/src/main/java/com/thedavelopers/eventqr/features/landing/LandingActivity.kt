@@ -14,11 +14,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.thedavelopers.eventqr.Dashboard
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.Registration
 import com.thedavelopers.eventqr.SignIn
+import com.thedavelopers.eventqr.core.api.dto.AccountRole
+import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.core.util.RoleMapper
 
 open class LandingActivity : AppCompatActivity() {
+    private lateinit var sessionManager: SessionManager
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -33,6 +38,12 @@ open class LandingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        sessionManager = SessionManager(this)
+        if (sessionManager.hasUsableToken()) {
+            navigateToDashboard(sessionManager.getUserRole())
+            return
+        }
 
         setContentView(R.layout.activity_splash_modern)
         enableEdgeToEdge()
@@ -71,5 +82,20 @@ open class LandingActivity : AppCompatActivity() {
             startActivity(Intent(this, Registration::class.java))
             finish()
         }
+    }
+
+    private fun navigateToDashboard(role: String?) {
+        val normalizedRole = RoleMapper.normalizeRole(role)
+        val destination = when (normalizedRole) {
+            AccountRole.STAFF.name -> com.thedavelopers.eventqr.features.staff.StaffDashboardActivity::class.java
+            AccountRole.ORGANIZER.name, AccountRole.ADMIN.name, AccountRole.SUPER_ADMIN.name ->
+                com.thedavelopers.eventqr.features.organizer.OrganizerDashboardActivity::class.java
+            else -> Dashboard::class.java
+        }
+        startActivity(
+            Intent(this, destination)
+                .putExtra("extra_role", normalizedRole)
+        )
+        finish()
     }
 }

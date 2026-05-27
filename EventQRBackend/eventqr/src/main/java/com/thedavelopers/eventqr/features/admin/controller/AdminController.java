@@ -22,6 +22,7 @@ import com.thedavelopers.eventqr.features.users.model.dto.UserRoleRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.UserStatusRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.UserRequest;
 import com.thedavelopers.eventqr.features.users.service.UserService;
+import com.thedavelopers.eventqr.features.audit.service.AuditLogService;
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
@@ -32,10 +33,12 @@ public class AdminController {
 
     private final UserService userService;
     private final JwtService jwtService;
+    private final AuditLogService auditLogService;
 
-    public AdminController(UserService userService, JwtService jwtService) {
+    public AdminController(UserService userService, JwtService jwtService, AuditLogService auditLogService) {
         this.userService = userService;
         this.jwtService = jwtService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/users")
@@ -120,9 +123,9 @@ public class AdminController {
     }
 
     @GetMapping("/audit-logs")
-    public ResponseEntity<ApiResponse<Void>> auditLogs(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<List<com.thedavelopers.eventqr.features.audit.model.dto.AuditLogResponse>>> auditLogs(HttpServletRequest request) {
         requireAdmin(request);
-        return notImplemented("Audit log persistence is not wired yet");
+        return ResponseEntity.ok(ApiResponse.success(auditLogService.findAll()));
     }
 
     private void requireAdmin(HttpServletRequest request) {

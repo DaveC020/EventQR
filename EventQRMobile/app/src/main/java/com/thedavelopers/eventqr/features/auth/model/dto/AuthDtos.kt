@@ -16,3 +16,25 @@ data class LoginResponse(
     val role: AccountRole?,
     val message: String? = null,
 )
+
+data class RegisterRequest(
+    val email: String,
+    val fullName: String,
+    val phoneNumber: String? = null,
+    val password: String
+)
+
+data class ForgotPasswordRequest(
+    val email: String
+)
+
+data class ResetPasswordRequest(
+    val email: String,
+    val resetCode: String,
+    val newPassword: String
+)
+
+data class PasswordChangeRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
