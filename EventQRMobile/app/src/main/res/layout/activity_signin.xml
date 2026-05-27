@@ -64,7 +64,7 @@
             <EditText
                 android:id="@+id/edtEmail"
                 android:layout_width="match_parent"
-                android:layout_height="35dp"
+                android:layout_height="49dp"
                 android:layout_marginTop="5dp"
                 android:background="@drawable/bg_auth_field"
                 android:drawableStart="@drawable/email_icon"
@@ -88,7 +88,7 @@
             <EditText
                 android:id="@+id/edtPassword"
                 android:layout_width="match_parent"
-                android:layout_height="35dp"
+                android:layout_height="49dp"
                 android:layout_marginTop="5dp"
                 android:background="@drawable/bg_auth_field"
                 android:drawableStart="@drawable/password_icon"
