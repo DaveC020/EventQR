@@ -115,6 +115,14 @@ class OrganizerRepository(private val context: Context) {
         }
     }
 
+    suspend fun loadEventForMvp(eventId: String): OrganizerMvpLoad<OrganizerMvpEvent?> {
+        return when (val result = fetchOrganizerEvent(eventId)) {
+            is NetworkResult.Success -> OrganizerMvpLoad(result.data.toMvpEvent(), OrganizerMvpDataSource.BACKEND)
+            is NetworkResult.Error -> OrganizerMvpLoad(null, OrganizerMvpDataSource.ERROR, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(null, OrganizerMvpDataSource.ERROR, null)
+        }
+    }
+
     suspend fun loadDashboardForMvp(): OrganizerMvpLoad<OrganizerDashboardDto?> {
         return when (val result = fetchOrganizerDashboardSummary()) {
             is NetworkResult.Success -> OrganizerMvpLoad(result.data, OrganizerMvpDataSource.BACKEND)
@@ -310,6 +318,7 @@ class OrganizerRepository(private val context: Context) {
 
     suspend fun getEvents() = safeApiCall { apiService.getEvents() }
     suspend fun fetchOrganizerEvents() = safeApiCall { apiService.getOrganizerEvents() }
+    suspend fun fetchOrganizerEvent(eventId: String) = safeApiCall { apiService.getOrganizerEvent(eventId) }
     suspend fun fetchOrganizerDashboardSummary() = safeApiCall { apiService.getOrganizerDashboardSummary() }
     suspend fun fetchOrganizerDashboard(eventId: String) = safeApiCall { apiService.getOrganizerDashboard(eventId) }
     suspend fun fetchOrganizerAttendees(eventId: String) = safeApiCall { apiService.getOrganizerAttendees(eventId) }

@@ -53,6 +53,7 @@
         <activity android:name=".features.organizer.ManageScanPurposesActivity" android:exported="false" />
         <activity android:name=".features.organizer.ManageUsersActivity" android:exported="false" />
         <activity android:name=".features.organizer.ManageEventsActivity" android:exported="false" />
+        <activity android:name=".features.organizer.OrganizerPlaceholderActivity" android:exported="false" />
         <activity android:name=".features.organizer.OrganizerDashboardActivity" android:exported="false" />
         <activity android:name=".features.organizer.AttendeeManagementActivity" android:exported="false" />
         <activity android:name=".features.organizer.AttendeeDetailsActivity" android:exported="false" />

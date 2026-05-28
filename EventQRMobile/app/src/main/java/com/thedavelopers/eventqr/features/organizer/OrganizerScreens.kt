@@ -18,7 +18,9 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -28,15 +30,21 @@ import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.SignIn
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerDashboardDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerReportDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionRuleDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.TransactionRuleRequest
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 private const val EXTRA_EVENT_ID = "event_id"
 private const val EXTRA_EVENT_TITLE = "event_title"
+private const val EXTRA_PLACEHOLDER_TITLE = "placeholder_title"
+private const val EXTRA_PLACEHOLDER_MESSAGE = "placeholder_message"
+private const val EXTRA_PLACEHOLDER_NAV = "placeholder_nav"
 private const val NAV_DASHBOARD = "Dashboard"
 private const val NAV_EVENTS = "Events"
 private const val NAV_ATTENDEES = "Attendees"
@@ -226,6 +234,18 @@ private fun AppCompatActivity.openOrganizerPage(target: Class<*>, eventId: Strin
     startActivity(intent)
 }
 
+private fun AppCompatActivity.openOrganizerPlaceholder(
+    title: String,
+    message: String,
+    selectedNav: String? = null,
+) {
+    startActivity(Intent(this, OrganizerPlaceholderActivity::class.java).apply {
+        putExtra(EXTRA_PLACEHOLDER_TITLE, title)
+        putExtra(EXTRA_PLACEHOLDER_MESSAGE, message)
+        selectedNav?.let { putExtra(EXTRA_PLACEHOLDER_NAV, it) }
+    })
+}
+
 private fun AppCompatActivity.showMissingEventScreen(screenTitle: String) {
     organizerShell(screenTitle, "Event ID is missing.", showBack = true)
         .addView(emptyState("Open this screen from My Events or the event hub.", "Open My Events") {
@@ -306,38 +326,176 @@ private fun AppCompatActivity.bottomNav(selected: String): LinearLayout {
     val nav = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(4), dp(6), dp(4), dp(6))
+        setPadding(dp(18), dp(6), dp(18), dp(6))
         setBackgroundColor(Color.WHITE)
         elevation = dp(6).toFloat()
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dp(68),
+            dp(76),
         )
     }
     val items = listOf(
-        NAV_DASHBOARD to OrganizerDashboardActivity::class.java,
-        NAV_EVENTS to ManageEventsActivity::class.java,
-        NAV_ATTENDEES to AttendeeManagementActivity::class.java,
-        NAV_LOGS to TransactionLogsActivity::class.java,
-        NAV_REPORTS to EventReportsActivity::class.java,
+        Triple(NAV_DASHBOARD, R.drawable.ic_nav_home, {
+            if (this@bottomNav !is OrganizerDashboardActivity) openOrganizerPage(OrganizerDashboardActivity::class.java)
+        }),
+        Triple(NAV_EVENTS, R.drawable.ic_nav_calendar, {
+            if (this@bottomNav !is ManageEventsActivity) openOrganizerPage(ManageEventsActivity::class.java)
+        }),
+        Triple(NAV_ATTENDEES, R.drawable.ic_group, {
+            if (selected != NAV_ATTENDEES) {
+                openOrganizerPlaceholder(
+                    title = "Attendees",
+                    message = "Attendee management details will be available in a follow-up release.",
+                    selectedNav = NAV_ATTENDEES,
+                )
+            }
+        }),
+        Triple(NAV_REPORTS, R.drawable.ic_search, {
+            if (selected != NAV_REPORTS) {
+                openOrganizerPlaceholder(
+                    title = "Reports",
+                    message = "Reports and analytics will be available in a follow-up release.",
+                    selectedNav = NAV_REPORTS,
+                )
+            }
+        }),
     )
-    items.forEach { (label, target) ->
+    items.forEach { (label, iconRes, onClick) ->
+        val isSelected = selected == label
         nav.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = if (selected == label) rounded(PRIMARY, 9, null, density = resources.displayMetrics.density) else null
             setPadding(dp(2), dp(4), dp(2), dp(4))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                 setMargins(dp(2), 0, dp(2), 0)
             }
-            addView(text(label.take(1), 17, true, if (selected == label) Color.WHITE else TEXT).apply { gravity = Gravity.CENTER })
-            addView(text(label, 10, true, if (selected == label) Color.WHITE else TEXT).apply { gravity = Gravity.CENTER })
-            setOnClickListener {
-                if (this@bottomNav::class.java != target) openOrganizerPage(target, selectedEventId().ifBlank { null })
-            }
+            addView(ImageView(this@bottomNav).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+                background = if (isSelected) {
+                    rounded(PURPLE, 16, null, density = resources.displayMetrics.density)
+                } else {
+                    rounded(Color.TRANSPARENT, 16, null, density = resources.displayMetrics.density)
+                }
+                setImageResource(iconRes)
+                setPadding(dp(9), dp(9), dp(9), dp(9))
+                setColorFilter(if (isSelected) Color.WHITE else Color.parseColor("#9CA3AF"))
+            })
+            addView(text(label, 11, isSelected, if (isSelected) PURPLE else Color.parseColor("#9CA3AF")).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(4), 0, 0)
+            })
+            setOnClickListener { onClick() }
         })
     }
     return nav
+}
+
+private fun AppCompatActivity.formatCount(value: Int): String = String.format("%,d", value)
+
+private fun OrganizerMvpEvent.lifecycleStatus(): String {
+    val normalized = status.lowercase()
+    return when {
+        normalized.contains("completed") || normalized.contains("ended") -> "Completed"
+        normalized.contains("active") -> "Active"
+        else -> "Upcoming"
+    }
+}
+
+private fun OrganizerMvpEvent.progressRatio(): Float {
+    if (capacity <= 0) return if (registeredCount > 0) 1f else 0f
+    return (registeredCount.toFloat() / capacity.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun AppCompatActivity.dateBadgeParts(shortDate: String): Pair<String, String> {
+    val tokens = shortDate.split(" ", ",", "-", "/").filter { it.isNotBlank() }
+    val day = tokens.firstOrNull { it.all(Char::isDigit) }?.padStart(2, '0') ?: "--"
+    val month = tokens.firstOrNull { it.any(Char::isLetter) }
+        ?.take(3)
+        ?.uppercase()
+        ?: "---"
+    return day to month
+}
+
+private fun AppCompatActivity.statusBadge(status: String): TextView {
+    val color = when (status) {
+        "Active" -> SUCCESS
+        "Completed" -> MUTED
+        else -> PURPLE
+    }
+    return text(status, 12, true, color).apply {
+        setPadding(dp(12), dp(6), dp(12), dp(6))
+        background = rounded(color and 0x22FFFFFF or 0x22000000, 16, null, density = resources.displayMetrics.density)
+    }
+}
+
+private fun AppCompatActivity.eventListCard(
+    event: OrganizerMvpEvent,
+    onClick: () -> Unit,
+): LinearLayout {
+    val (day, month) = dateBadgeParts(event.shortDate)
+    val lifecycle = event.lifecycleStatus()
+    val ratio = event.progressRatio()
+    val percent = (ratio * 100f).roundToInt()
+
+    return card(14).apply {
+        setOnClickListener { onClick() }
+        addView(View(this@eventListCard).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(4))
+            background = rounded(
+                when (lifecycle) {
+                    "Active" -> Color.parseColor("#06B6D4")
+                    "Completed" -> Color.parseColor("#10B981")
+                    else -> PURPLE
+                },
+                10,
+                null,
+                density = resources.displayMetrics.density,
+            )
+        })
+
+        addView(row().apply {
+            addView(LinearLayout(this@eventListCard).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = rounded(Color.parseColor("#EEF0FF"), 10, null, density = resources.displayMetrics.density)
+                layoutParams = LinearLayout.LayoutParams(dp(48), dp(56))
+                addView(text(day, 22, true, PURPLE).apply { gravity = Gravity.CENTER })
+                addView(text(month, 11, true, PURPLE).apply { gravity = Gravity.CENTER })
+            })
+
+            addView(LinearLayout(this@eventListCard).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    setMargins(dp(12), 0, dp(10), 0)
+                }
+                addView(text(event.title, 18, true))
+                addView(text("${event.dateTime} · ${event.venue}", 13, false, MUTED))
+            })
+
+            addView(statusBadge(lifecycle))
+        })
+
+        addView(row().apply {
+            addView(text("${formatCount(event.registeredCount)} / ${formatCount(max(event.capacity, 0))} registered", 12, false, MUTED).apply {
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(text("${min(percent, 100)}%", 12, false, MUTED))
+        })
+
+        addView(row().apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6)).apply {
+                setMargins(0, dp(8), 0, 0)
+            }
+            addView(View(this@eventListCard).apply {
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, ratio)
+                background = rounded(PURPLE, 8, null, density = resources.displayMetrics.density)
+            })
+            addView(View(this@eventListCard).apply {
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - ratio)
+                background = rounded(Color.parseColor("#E5E7EB"), 8, null, density = resources.displayMetrics.density)
+            })
+        })
+    }
 }
 
 private fun AppCompatActivity.eventSelector(
@@ -416,31 +574,53 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
         findViewById<View>(R.id.navEvents).setOnClickListener {
             openOrganizerPage(ManageEventsActivity::class.java)
         }
-        findViewById<View>(R.id.navRewards).setOnClickListener {
-            openOrganizerPage(ManageRewardsActivity::class.java)
+        findViewById<View>(R.id.navAttendees).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "Attendees",
+                message = "Attendee management details will be available in a follow-up release.",
+                selectedNav = NAV_ATTENDEES,
+            )
         }
-        findViewById<View>(R.id.navProfile).setOnClickListener {
-            startActivity(Intent(this, com.thedavelopers.eventqr.features.profile.ProfileActivity::class.java))
+        findViewById<View>(R.id.navReports).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "Reports",
+                message = "Reports and analytics will be available in a follow-up release.",
+                selectedNav = NAV_REPORTS,
+            )
         }
 
-        findViewById<View>(R.id.btnAttendeeManagement).setOnClickListener {
-            openOrganizerPage(AttendeeManagementActivity::class.java, selectedEventId().ifBlank { null })
+        findViewById<View>(R.id.btnManageMyEvents).setOnClickListener {
+            openOrganizerPage(ManageEventsActivity::class.java)
         }
-        findViewById<View>(R.id.btnStaffManagement).setOnClickListener {
-            openOrganizerPage(ManageUsersActivity::class.java, selectedEventId().ifBlank { null })
+        findViewById<View>(R.id.btnManageAttendees).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "Attendees",
+                message = "Attendee management is currently a placeholder from the dashboard.",
+            )
         }
-        findViewById<View>(R.id.btnScanPurposes).setOnClickListener {
-            openOrganizerPage(ManageScanPurposesActivity::class.java, selectedEventId().ifBlank { null })
+        findViewById<View>(R.id.btnManageReports).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "Reports",
+                message = "Reports and analytics is currently a placeholder from the dashboard.",
+            )
         }
-        findViewById<View>(R.id.btnRewardManagement).setOnClickListener {
-            openOrganizerPage(TransactionLogsActivity::class.java, selectedEventId().ifBlank { null })
+        findViewById<View>(R.id.btnManageRewards).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "Rewards",
+                message = "Rewards management is currently a placeholder from the dashboard.",
+            )
         }
-        findViewById<View>(R.id.btnReportsAnalytics).setOnClickListener {
-            openOrganizerPage(EventReportsActivity::class.java, selectedEventId().ifBlank { null })
+        findViewById<View>(R.id.btnSeeAllEvents).setOnClickListener {
+            openOrganizerPage(ManageEventsActivity::class.java)
+        }
+        findViewById<View>(R.id.btnDashboardRetry).setOnClickListener {
+            loadDashboard()
         }
     }
 
     private fun loadDashboard() {
+        findViewById<ProgressBar>(R.id.progressDashboardLoading).visibility = View.VISIBLE
+        findViewById<View>(R.id.layoutDashboardError).visibility = View.GONE
         MainScope().launch {
             val dashboard = repository.loadDashboardForMvp()
             val load = repository.loadEventsForMvp()
@@ -450,115 +630,99 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
 
     private fun renderDashboard(
         load: OrganizerMvpLoad<List<OrganizerMvpEvent>>,
-        dashboard: OrganizerMvpLoad<com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerDashboardDto?>? = null,
+        dashboard: OrganizerMvpLoad<OrganizerDashboardDto?>? = null,
     ) {
+        findViewById<ProgressBar>(R.id.progressDashboardLoading).visibility = View.GONE
         val dashboardData = dashboard?.data
         val name = dashboardData?.organizerName.orEmpty().ifBlank { sessionManager.getFullName().orEmpty().ifBlank { "Organizer" } }
         val organization = dashboardData?.organization.orEmpty().ifBlank { "Organization not set" }
 
-        findViewById<TextView>(R.id.txtHeaderTitle).text = "Organizer Dashboard"
-        findViewById<TextView>(R.id.txtHeaderSubtitle).text = "$name | $organization"
+        findViewById<TextView>(R.id.txtHeaderTitle).text = "Organizer Portal"
+        findViewById<TextView>(R.id.txtHeaderSubtitle).text = "$name • $organization"
 
         val events = load.data.approvedOnly()
-        val selected = repository.resolveSelectedEvent(load.data, selectedEventId())
-
-        if (selected != null) {
-            findViewById<TextView>(R.id.txtActiveEventName).text = selected.title
-            findViewById<TextView>(R.id.txtActiveEventDetails).text = "${selected.shortDate} • ${selected.registeredCount} attendees"
-            findViewById<View>(R.id.cardActiveEvent).setOnClickListener {
-                openOrganizerPage(ManageEventsActivity::class.java, selected.id, selected.title)
-            }
-        }
-
-        findViewById<TextView>(R.id.btnSwitchEvent).setOnClickListener {
-            showSwitchEventDialog(events)
-        }
-
+        val selected = repository.resolveSelectedEvent(events, selectedEventId())
         val totalAttendees = dashboardData?.totalAttendees ?: events.sumOf { it.registeredCount }
         val totalTransactions = dashboardData?.totalTransactions ?: events.sumOf { it.totalTransactions }
+        val totalRewards = events.sumOf { it.rewardRedemptions }
+        val totalEvents = dashboardData?.totalEvents ?: events.size
 
-        findViewById<TextView>(R.id.txtStatRegistered).text = totalAttendees.toString()
-        findViewById<TextView>(R.id.txtStatStaff).text = (selected?.staffCount ?: 0).toString()
-        findViewById<TextView>(R.id.txtStatScans).text = totalTransactions.toString()
-        findViewById<TextView>(R.id.txtStatRules).text = (selected?.scanPurposesCount ?: 0).toString()
-    }
+        findViewById<TextView>(R.id.txtStatTotalEvents).text = formatCount(totalEvents)
+        findViewById<TextView>(R.id.txtStatTotalAttendees).text = formatCount(totalAttendees)
+        findViewById<TextView>(R.id.txtStatScansToday).text = formatCount(totalTransactions)
+        findViewById<TextView>(R.id.txtStatRewardsGiven).text = formatCount(totalRewards)
 
-    private fun showSwitchEventDialog(events: List<OrganizerMvpEvent>) {
+        val activeEventsContainer = findViewById<LinearLayout>(R.id.activeEventsContainer)
+        val emptyEvents = findViewById<TextView>(R.id.txtActiveEventsEmpty)
+        activeEventsContainer.removeAllViews()
+
+        val hasError = load.source == OrganizerMvpDataSource.ERROR
+        findViewById<View>(R.id.layoutDashboardError).visibility = if (hasError && events.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.txtDashboardError).text = load.message ?: "Organizer events could not be loaded."
+
         if (events.isEmpty()) {
-            Toast.makeText(this, "No approved events available.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Switch Event")
-            .setItems(events.map { it.title }.toTypedArray()) { _, index ->
-                val event = events[index]
-                repository.saveSelectedEventId(event.id)
-                saveSelectedEventId(event.id)
-                Toast.makeText(this, "Now managing ${event.title}", Toast.LENGTH_SHORT).show()
-                loadDashboard()
+            emptyEvents.visibility = View.VISIBLE
+        } else {
+            emptyEvents.visibility = View.GONE
+            events.take(3).forEach { event ->
+                activeEventsContainer.addView(eventListCard(event) {
+                    val target = selected?.takeIf { it.id == event.id } ?: event
+                    openOrganizerPage(EventManagementHubActivity::class.java, target.id, target.title)
+                })
             }
-            .show()
+        }
     }
 }
 
 open class ManageEventsActivity : AppCompatActivity() {
     private lateinit var repository: OrganizerRepository
     private lateinit var eventList: LinearLayout
-    private lateinit var detail: LinearLayout
-    private lateinit var search: EditText
-    private lateinit var statusSpinner: Spinner
-    private var selectedEvent: OrganizerMvpEvent? = null
+    private lateinit var filterRow: LinearLayout
+    private var selectedFilter = "All"
     private var eventsSource: OrganizerMvpLoad<List<OrganizerMvpEvent>> =
         OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.ERROR, null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = OrganizerRepository(this)
-        selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents())
-        val content = organizerShell("My Events", "Approved organizer-owned events", selectedNav = NAV_EVENTS)
-        search = EditText(this).apply {
-            hint = "Search events"
-            inputType = InputType.TYPE_CLASS_TEXT
-            background = rounded(Color.WHITE, 10, BORDER, density = resources.displayMetrics.density)
-            setPadding(dp(12), 0, dp(12), 0)
-        }
-        statusSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@ManageEventsActivity,
-                android.R.layout.simple_spinner_item,
-                listOf("All", "Approved", "Completed"),
-            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        val content = organizerShell("My Events", selectedNav = NAV_EVENTS)
+        filterRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { setMargins(0, 0, 0, dp(8)) }
         }
         eventList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        detail = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        content.addView(search)
-        content.addView(statusSpinner)
+        content.addView(filterRow)
         content.addView(eventList)
-        content.addView(section("Manage Event Detail"))
-        content.addView(detail)
-        search.afterTextChanged { render() }
-        statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = render()
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        }
+        renderFilters()
         eventList.addView(loadingState("Loading events..."))
         loadEvents()
+    }
+
+    private fun renderFilters() {
+        filterRow.removeAllViews()
+        listOf("All", "Upcoming", "Active", "Completed").forEach { label ->
+            filterRow.addView(chip(label, selectedFilter == label, PURPLE).apply {
+                setOnClickListener {
+                    selectedFilter = label
+                    render()
+                }
+            })
+        }
     }
 
     private fun loadEvents() {
         MainScope().launch {
             eventsSource = repository.loadEventsForMvp()
-            selectedEvent = repository.resolveSelectedEvent(eventsSource.data, selectedEventId())
             render()
         }
     }
 
     private fun render() {
-        val q = search.text.toString()
-        val status = statusSpinner.selectedItem?.toString().orEmpty()
-        val events = eventsSource.data.filter {
-            (status == "All" || it.status.equals(status, true)) &&
-                (it.title.contains(q, true) || it.organizerName.contains(q, true))
+        val events = eventsSource.data.approvedOnly().filter {
+            selectedFilter == "All" || it.lifecycleStatus() == selectedFilter
         }
         eventList.removeAllViews()
         dataSourceBanner(eventsSource)?.let { eventList.addView(it) }
@@ -567,81 +731,32 @@ open class ManageEventsActivity : AppCompatActivity() {
                 if (eventsSource.source == OrganizerMvpDataSource.ERROR) {
                     errorState(eventsSource.message ?: "Organizer events could not be loaded.") { loadEvents() }
                 } else {
-                    emptyState("No organizer-owned events match your search/filter.")
+                    emptyState("No events available for the selected filter.")
                 }
             )
-            detail.removeAllViews()
             return
         }
         events.forEach { event ->
-            eventList.addView(eventRequestCard(event))
-        }
-        val eventToShow = selectedEvent ?: events.firstOrNull { it.status == "Approved" } ?: events.first()
-        renderDetail(eventToShow)
-    }
-
-    private fun eventRequestCard(event: OrganizerMvpEvent): LinearLayout =
-        card().apply {
-            val header = row()
-            val titleBox = LinearLayout(this@ManageEventsActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            titleBox.addView(text(event.title, 18, true))
-            titleBox.addView(text(event.organizerName, 13, false, MUTED))
-            titleBox.addView(text("Event Date: ${event.shortDate}\nLocation: ${event.venue}", 12, false, MUTED))
-            header.addView(titleBox)
-            header.addView(badge(event.status))
-            addView(header)
-            addView(text("Registration: ${event.submittedDate} - ${event.registrationCloseDate}", 12, false, MUTED))
-            addView(text("Capacity: ${event.capacity} | Registered: ${event.registeredCount} | Available: ${event.availableSlots}", 12, false, MUTED))
-            setOnClickListener {
-                openOrganizerPage(EventManagementHubActivity::class.java, event.id, event.title)
-            }
-            addView(primaryButton("Manage Event") {
+            eventList.addView(eventListCard(event) {
                 openOrganizerPage(EventManagementHubActivity::class.java, event.id, event.title)
             })
         }
+    }
+}
 
-    private fun renderDetail(event: OrganizerMvpEvent) {
-        detail.removeAllViews()
-        if (!event.status.equals("Approved", true) && !event.status.equals("Completed", true)) {
-            detail.addView(emptyState("Manage Event is available after admin approval."))
-            return
-        }
-        detail.addView(card().apply {
-            addView(text(event.title, 18, true))
-            addView(text("${event.dateTime}\nVenue: ${event.venue}\nStatus: ${event.status}", 13, false, MUTED))
-            addView(text("Registration: ${event.submittedDate} - ${event.registrationCloseDate}", 12, false, MUTED))
-            addView(text(event.description.ifBlank { "No description provided." }, 13, false, MUTED))
-        })
-        detail.addView(row().apply {
-            addView(summaryCard("Registered", event.registeredCount.toString()))
-            addView(summaryCard("Capacity", event.capacity.toString(), SUCCESS))
-        })
-        detail.addView(row().apply {
-            addView(summaryCard("Available", event.availableSlots.toString()))
-            addView(summaryCard("Checked In", event.enteredCount.toString(), SUCCESS))
-        })
-        detail.addView(card().apply {
-            addView(text("Configuration", 15, true))
-            addView(text("ID template: ${event.idTemplateStatus}"))
-            addView(text("Rewards: ${event.rewardsStatus}"))
-        })
-        listOf(
-            "Attendee Management" to AttendeeManagementActivity::class.java,
-            "Transaction Logs" to TransactionLogsActivity::class.java,
-            "Event Reports" to EventReportsActivity::class.java,
-            "Manage Staff Access" to ManageUsersActivity::class.java,
-            "Scan Purpose Management" to ManageScanPurposesActivity::class.java,
-            "Transaction Rules" to TransactionRulesActivity::class.java,
-            "ID Template" to IdTemplatePlaceholderActivity::class.java,
-            "Reward Management" to ManageRewardsActivity::class.java,
-            "Point Rules" to PointRulesPlaceholderActivity::class.java,
-        ).forEach { (label, target) ->
-            detail.addView(ghostButton(label) { openOrganizerPage(target, event.id, event.title) })
-        }
-        detail.addView(stateCard())
+open class OrganizerPlaceholderActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val title = intent.getStringExtra(EXTRA_PLACEHOLDER_TITLE).orEmpty().ifBlank { "Coming Soon" }
+        val message = intent.getStringExtra(EXTRA_PLACEHOLDER_MESSAGE)
+            .orEmpty()
+            .ifBlank { "This feature is being prepared and will be connected in a follow-up release." }
+        val selectedNav = intent.getStringExtra(EXTRA_PLACEHOLDER_NAV)
+        organizerShell(title, selectedNav = selectedNav).addView(
+            emptyState(message, "Open My Events") {
+                openOrganizerPage(ManageEventsActivity::class.java)
+            },
+        )
     }
 }
 
@@ -656,14 +771,20 @@ open class EventManagementHubActivity : AppCompatActivity() {
         content.addView(loadingState("Loading event details..."))
 
         MainScope().launch {
-            val load = repository.loadEventsForMvp()
-            val event = load.data.firstOrNull { it.id == eventId }
+            val load = repository.loadEventForMvp(eventId)
+            val event = load.data
             content.removeAllViews()
             dataSourceBanner(load)?.let { content.addView(it) }
             if (event == null) {
-                content.addView(emptyState("Event not found or not available for organizer management.", "Open My Events") {
-                    openOrganizerPage(ManageEventsActivity::class.java)
-                })
+                content.addView(
+                    if (load.source == OrganizerMvpDataSource.ERROR) {
+                        errorState(load.message ?: "Event details could not be loaded.") { recreate() }
+                    } else {
+                        emptyState("Event not found or not available for organizer management.", "Open My Events") {
+                            openOrganizerPage(ManageEventsActivity::class.java)
+                        }
+                    },
+                )
                 return@launch
             }
 

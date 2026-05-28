@@ -165,6 +165,9 @@ interface ApiService {
     @GET("organizer/events")
     suspend fun getOrganizerEvents(): ApiResponse<List<OrganizerEventDto>>
 
+    @GET("organizer/events/{eventId}")
+    suspend fun getOrganizerEvent(@Path("eventId") eventId: String): ApiResponse<OrganizerEventDto>
+
     @GET("organizer/dashboard")
     suspend fun getOrganizerDashboardSummary(): ApiResponse<OrganizerDashboardDto>
 
@@ -183,7 +186,7 @@ interface ApiService {
     @GET("organizer/events/{eventId}/transactions")
     suspend fun getOrganizerTransactions(@Path("eventId") eventId: String): ApiResponse<List<OrganizerTransactionDto>>
 
-    @GET("organizer/events/{eventId}/reports")
+    @GET("organizer/events/{eventId}/reports/summary")
     suspend fun getOrganizerReport(@Path("eventId") eventId: String): ApiResponse<OrganizerReportDto>
 
     @GET("organizer/events/{eventId}/staff")

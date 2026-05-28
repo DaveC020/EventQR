@@ -336,13 +336,18 @@ public class OrganizerService {
 
     public void removeStaff(UUID organizerUserId, UUID eventId, UUID assignmentId) {
         requireOrganizerEvent(organizerUserId, eventId);
-        EventStaffAssignment assignment = requireAssignment(eventId, assignmentId);
+        EventStaffAssignment assignment = staffAssignmentRepository.findById(assignmentId)
+                .filter(item -> item.getEventId().equals(eventId))
+                .or(() -> staffAssignmentRepository.findByEventIdAndStaffUserId(eventId, assignmentId))
+                .orElseThrow(() -> new ResourceNotFoundException("Staff assignment not found for event"));
         assignment.setActive(false);
         staffAssignmentRepository.save(assignment);
     }
 
     @Transactional(readOnly = true)
     public List<UserSearchResponse> searchUsers(UUID organizerUserId, String query) {
+        userProfileRepository.findById(organizerUserId)
+                .orElseThrow(() -> new ForbiddenException("Organizer account not found"));
         String safeQuery = query == null ? "" : query.trim();
         if (safeQuery.isBlank()) {
             return List.of();
@@ -352,6 +357,12 @@ public class OrganizerService {
                 .map(user -> new UserSearchResponse(user.getId(), user.getFullName(), user.getEmail(),
                         user.getRole().name(), user.getStatus().name()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSearchResponse> searchUsers(UUID organizerUserId, UUID eventId, String query) {
+        requireOrganizerEvent(organizerUserId, eventId);
+        return searchUsers(organizerUserId, query);
     }
 
     @Transactional(readOnly = true)

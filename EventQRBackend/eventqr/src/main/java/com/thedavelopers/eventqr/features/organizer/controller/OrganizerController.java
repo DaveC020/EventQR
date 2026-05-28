@@ -135,6 +135,13 @@ public class OrganizerController {
         return ResponseEntity.ok(ApiResponse.success(organizerService.staff(currentUserId(request), eventId)));
     }
 
+    @GetMapping("/events/{eventId}/staff/search")
+    public ResponseEntity<ApiResponse<List<UserSearchResponse>>> searchEventStaffUsers(HttpServletRequest request,
+                                                                                       @PathVariable UUID eventId,
+                                                                                       @RequestParam String query) {
+        return ResponseEntity.ok(ApiResponse.success(organizerService.searchUsers(currentUserId(request), eventId, query)));
+    }
+
     @PostMapping("/events/{eventId}/staff")
     public ResponseEntity<ApiResponse<OrganizerStaffResponse>> addStaff(HttpServletRequest request,
                                                                         @PathVariable UUID eventId,
