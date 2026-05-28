@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
@@ -31,10 +32,11 @@ import com.thedavelopers.eventqr.features.staff.StaffTransactionsActivity
 import com.thedavelopers.eventqr.features.staff.StaffScreenExtras
 import com.thedavelopers.eventqr.features.staff.StaffCameraScannerActivity
 import com.thedavelopers.eventqr.features.staff.model.dto.ScanVerificationResponse
+import com.thedavelopers.eventqr.features.staff.result.StaffScanResultActivity
 import com.thedavelopers.eventqr.features.transactions.TransactionAdapter
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse
 import com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResponse
-import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     private lateinit var presenter: ScannerPresenter
@@ -49,14 +51,40 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     private val eventOptions = mutableListOf<EventSpinnerOption>()
     private val purposeOptions = mutableListOf<ScanPurposeResponse>()
     private var preselectedEventId: String? = null
+    private var lastSubmittedSignature: String? = null
+    private var lastSubmittedAtMs: Long = 0L
+    private var submitInFlight: Boolean = false
+
+    private val tag = "StaffQrScanner"
+    private val duplicateWindowMs = 2_000L
+
     private val cameraScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val scannedValue = result.data?.getStringExtra(StaffScreenExtras.EXTRA_QR_VALUE)
-        if (result.resultCode == RESULT_OK && !scannedValue.isNullOrBlank()) {
-            qrInput.setText(scannedValue)
-            qrInput.setSelection(scannedValue.length)
+        if (result.resultCode != RESULT_OK) {
+            Log.d(tag, "camera result canceled")
+            return@registerForActivityResult
         }
+        val scannedValue = result.data?.getStringExtra(StaffScreenExtras.EXTRA_QR_VALUE)?.trim().orEmpty()
+        if (scannedValue.isBlank()) {
+            showMessage("Camera did not capture a QR value.")
+            Log.w(tag, "camera result missing raw QR value")
+            return@registerForActivityResult
+        }
+
+        Log.d(tag, "raw QR value detected: $scannedValue")
+        val parsed = parseQrPayload(scannedValue)
+        if (parsed == null || parsed.qrValue.isBlank()) {
+            showMessage("QR payload format is invalid.")
+            Log.w(tag, "invalid QR payload format raw=$scannedValue")
+            return@registerForActivityResult
+        }
+
+        Log.d(tag, "parsed QR value=${parsed.qrValue} parsedCredentialId=${parsed.qrCredentialId}")
+        qrInput.setText(parsed.qrValue)
+        qrInput.setSelection(parsed.qrValue.length)
+        submitCurrentSelection(trigger = "camera")
     }
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        Log.d(tag, "camera permission result granted=$granted")
         if (granted) {
             openCameraScanner()
         } else {
@@ -114,13 +142,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         }
 
         findViewById<Button>(R.id.btnSubmitScan).setOnClickListener {
-            val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
-            val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
-            if (selectedEvent == null || selectedPurpose == null) {
-                showMessage("Select an event and scan purpose")
-                return@setOnClickListener
-            }
-            presenter.submitScan(selectedEvent.id, selectedPurpose, qrInput.text.toString(), notesInput.text.toString(), staffUserId)
+            submitCurrentSelection(trigger = "manual")
         }
 
         presenter.loadEvents()
@@ -150,14 +172,12 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         loadSelectedPurposes()
     }
 
-    private val TAG = "StaffScanner"
-
     override fun showPurposes(items: List<ScanPurposeResponse>) {
         val activePurposes = items.filter { it.active }
         val selectedEventId = eventOptions.getOrNull(eventSpinner.selectedItemPosition)?.id
         val labels = activePurposes.map { it.name }
         Log.d(
-            TAG,
+            tag,
             "eventId=$selectedEventId loadedScanPurposeCount=${items.size} displayedOptionLabels=$labels"
         )
         
@@ -178,11 +198,21 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     }
 
     override fun showVerificationResult(result: ScanVerificationResponse) {
+        submitInFlight = false
+        Log.d(
+            tag,
+            "backend verification result=SUCCESS eventId=${result.eventId} scanPurposeId=${result.scanPurposeId} message=${result.message}"
+        )
         resultText.text = result.message
+        openVerificationResult(result)
     }
 
     override fun showScanError(message: String) {
+        submitInFlight = false
+        Log.w(tag, "backend verification result=ERROR message=$message")
         resultText.text = message
+        showMessage(message)
+        openRejectedResult(message)
     }
 
     override fun showMessage(message: String) {
@@ -191,6 +221,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
 
     override fun showLoading(isLoading: Boolean) {
         findViewById<View>(R.id.progressScanner).visibility = if (isLoading) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btnSubmitScan).isEnabled = !isLoading
     }
 
     private fun loadSelectedPurposes() {
@@ -201,6 +232,128 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     }
 
     private fun openCameraScanner() {
+        Log.d(tag, "launching camera scanner")
         cameraScanLauncher.launch(Intent(this, StaffCameraScannerActivity::class.java))
     }
+
+    private fun submitCurrentSelection(trigger: String) {
+        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        if (selectedEvent == null) {
+            showMessage("No assigned event selected.")
+            Log.w(tag, "submit blocked: missing selected event")
+            return
+        }
+        if (purposeOptions.isEmpty()) {
+            showMessage("No scan purposes enabled for this event.")
+            Log.w(tag, "submit blocked: no enabled scan purposes eventId=${selectedEvent.id}")
+            return
+        }
+        val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        if (selectedPurpose == null) {
+            showMessage("No scan purpose selected.")
+            Log.w(tag, "submit blocked: missing selected scan purpose eventId=${selectedEvent.id}")
+            return
+        }
+
+        val qrValue = qrInput.text.toString().trim()
+        if (qrValue.isBlank()) {
+            showMessage("QR payload format is invalid.")
+            Log.w(tag, "submit blocked: empty QR value")
+            return
+        }
+
+        val signature = "${selectedEvent.id}|${selectedPurpose.scanPurposeId}|$qrValue"
+        val now = SystemClock.elapsedRealtime()
+        if (submitInFlight || (signature == lastSubmittedSignature && now - lastSubmittedAtMs < duplicateWindowMs)) {
+            showMessage("Scan is already being processed. Please wait.")
+            Log.w(tag, "duplicate rapid submission prevented signature=$signature")
+            return
+        }
+
+        submitInFlight = true
+        lastSubmittedSignature = signature
+        lastSubmittedAtMs = now
+        Log.d(
+            tag,
+            "submit trigger=$trigger selectedEventId=${selectedEvent.id} selectedScanPurposeId=${selectedPurpose.scanPurposeId} selectedScanPurposeCode=${selectedPurpose.code} qrValue=$qrValue"
+        )
+        presenter.submitScan(
+            selectedEvent.id,
+            selectedPurpose,
+            qrValue,
+            notesInput.text.toString(),
+            staffUserId
+        )
+    }
+
+    private fun openVerificationResult(result: ScanVerificationResponse) {
+        val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
+            putExtra(StaffScreenExtras.EXTRA_IS_VALID, true)
+            putExtra(StaffScreenExtras.EXTRA_MESSAGE, result.message.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_ID, result.eventId.toString())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, selectedEvent?.label.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, result.scanPurposeId.toString())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.name ?: result.scanPurposeCode.name)
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, result.scanPurposeCode.name)
+            putExtra(StaffScreenExtras.EXTRA_QR_VALUE, result.qrValue)
+            putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_ID, result.attendeeUserId.toString())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_NAME, result.attendeeName.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_EMAIL, result.attendeeEmail.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_REGISTRATION_ID, result.registrationId.toString())
+            putExtra(StaffScreenExtras.EXTRA_QR_CREDENTIAL_ID, result.qrCredentialId.toString())
+            putExtra(StaffScreenExtras.EXTRA_REGISTRATION_STATUS, result.registrationStatus.name)
+            putExtra(StaffScreenExtras.EXTRA_QR_ACTIVE, result.qrActive)
+            putExtra(StaffScreenExtras.EXTRA_VERIFIED_AT, result.verifiedAt?.toString().orEmpty())
+        })
+    }
+
+    private fun openRejectedResult(message: String) {
+        val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
+            putExtra(StaffScreenExtras.EXTRA_IS_VALID, false)
+            putExtra(StaffScreenExtras.EXTRA_MESSAGE, message)
+            putExtra(StaffScreenExtras.EXTRA_EVENT_ID, selectedEvent?.id.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, selectedEvent?.label.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, selectedPurpose?.scanPurposeId?.toString().orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, selectedPurpose?.code?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_QR_VALUE, qrInput.text.toString().trim())
+            putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
+        })
+    }
+
+    private fun parseQrPayload(raw: String): ParsedQrPayload? {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return null
+        if (!(trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+            return ParsedQrPayload(trimmed, null)
+        }
+
+        return runCatching {
+            val json = JSONObject(trimmed)
+            val qrValue = firstNonBlank(
+                json.optString("qrValue"),
+                json.optString("qr_value"),
+                json.optString("value"),
+            )
+            val qrCredentialId = firstNonBlank(
+                json.optString("qrCredentialId"),
+                json.optString("qr_credential_id"),
+                json.optString("credentialId"),
+            )
+            qrValue?.let { ParsedQrPayload(it, qrCredentialId) }
+        }.getOrNull()
+    }
+
+    private fun firstNonBlank(vararg values: String?): String? =
+        values.firstOrNull { !it.isNullOrBlank() }?.trim()
+
+    private data class ParsedQrPayload(
+        val qrValue: String,
+        val qrCredentialId: String?,
+    )
 }

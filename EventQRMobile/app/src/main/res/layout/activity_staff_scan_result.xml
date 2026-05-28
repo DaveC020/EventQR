@@ -28,7 +28,7 @@
             android:layout_centerVertical="true"
             android:layout_marginStart="16dp"
             android:layout_toEndOf="@id/btnBackToScanner"
-            android:text="Scan Result"
+            android:text="Verification Result"
             android:textColor="#1F2937"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -60,7 +60,7 @@
                         android:id="@+id/txtScanResultState"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Verification Approved"
+                        android:text="QR Code Valid"
                         android:textColor="#111827"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -70,7 +70,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Backend verification succeeded."
+                        android:text="Attendee verified successfully"
                         android:textColor="#4B5563"
                         android:textSize="14sp" />
 
@@ -188,7 +188,7 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="20dp"
                 android:background="@drawable/bg_scanner_button"
-                android:text="Record Transaction"
+                android:text="Log Entry Transaction"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
@@ -214,7 +214,7 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/bg_card"
-                android:text="Scan Again"
+                android:text="Scan Another"
                 android:textAllCaps="false"
                 android:textColor="#1F2937"
                 android:textSize="16sp"

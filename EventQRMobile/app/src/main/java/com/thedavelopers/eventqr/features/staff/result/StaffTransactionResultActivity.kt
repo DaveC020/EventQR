@@ -31,12 +31,16 @@ open class StaffTransactionResultActivity : AppCompatActivity() {
         setContentView(R.layout.activity_staff_transaction_result)
 
         val approved = intent.getStringExtra(StaffScreenExtras.EXTRA_TRANSACTION_RESULT).orUnknown() == TransactionResult.APPROVED.name
-        findViewById<TextView>(R.id.txtTransactionState).text = if (approved) "Transaction Approved" else "Transaction Rejected"
-        findViewById<TextView>(R.id.txtTransactionType).text = intent.getStringExtra(StaffScreenExtras.EXTRA_TRANSACTION_TYPE).orUnknown("Transaction")
+        findViewById<TextView>(R.id.txtTransactionState).text = if (approved) "Transaction Successful" else "Transaction Rejected"
+        findViewById<TextView>(R.id.txtTransactionType).text = buildString {
+            append(intent.getStringExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME).orUnknown("Scan Purpose"))
+            append(" · ")
+            append(intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_TITLE).orUnknown("Event"))
+        }
         findViewById<TextView>(R.id.txtTransactionEvent).text = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_TITLE).orUnknown("Event")
         findViewById<TextView>(R.id.txtTransactionAttendee).text = intent.getStringExtra(StaffScreenExtras.EXTRA_ATTENDEE_NAME).orUnknown("Attendee")
         findViewById<TextView>(R.id.txtTransactionTime).text = intent.getStringExtra(StaffScreenExtras.EXTRA_SCANNED_AT).orUnknown("Just now")
-        findViewById<TextView>(R.id.txtTransactionPoints).text = intent.getIntExtra(StaffScreenExtras.EXTRA_POINTS_DELTA, 0).let { delta -> if (delta >= 0) "+$delta" else delta.toString() }
+        findViewById<TextView>(R.id.txtTransactionPoints).text = intent.getIntExtra(StaffScreenExtras.EXTRA_POINTS_DELTA, 0).let { delta -> if (delta >= 0) "+$delta pts" else "$delta pts" }
         findViewById<TextView>(R.id.txtTransactionReason).text = intent.getStringExtra(StaffScreenExtras.EXTRA_REASON).orUnknown(if (approved) "Approved by backend" else "Rejected by backend")
 
         findViewById<View>(R.id.layoutTransactionApproved).visibility = if (approved) View.VISIBLE else View.GONE
@@ -44,6 +48,8 @@ open class StaffTransactionResultActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnViewTransactionAttendee).visibility = if (approved) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.btnViewTransactionAttendee).setOnClickListener { openAttendeeDetails() }
+        findViewById<Button>(R.id.btnTransactionScanAgain).text = "Scan Next Attendee"
+        findViewById<Button>(R.id.btnTransactionDashboard).text = "Back to Dashboard"
         findViewById<Button>(R.id.btnTransactionScanAgain).setOnClickListener { openScanner() }
         findViewById<Button>(R.id.btnTransactionDashboard).setOnClickListener {
             startActivity(Intent(this, StaffDashboardActivity::class.java))

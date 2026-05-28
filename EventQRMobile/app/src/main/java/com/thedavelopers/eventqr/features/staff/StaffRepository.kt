@@ -34,7 +34,7 @@ class StaffRepository(context: Context) {
             ScanPurposeCode.ATTENDANCE -> apiService.logAttendance(request.eventId.toString(), request)
             ScanPurposeCode.BENEFIT_CLAIM -> apiService.logBenefitClaim(request.eventId.toString(), request)
             ScanPurposeCode.BOOTH_VISIT, ScanPurposeCode.SESSION_VISIT -> apiService.logBoothVisit(request.eventId.toString(), request)
-            ScanPurposeCode.REWARD_REDEMPTION_SCAN -> apiService.logRewardRedemption(request.eventId.toString(), request)
+            ScanPurposeCode.REWARD_REDEMPTION_SCAN, ScanPurposeCode.REWARD_REDEMPTION -> apiService.logRewardRedemption(request.eventId.toString(), request)
             ScanPurposeCode.EXIT -> apiService.logExit(request.eventId.toString(), request)
             else -> apiService.createTransaction(request)
         }

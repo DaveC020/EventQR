@@ -16,6 +16,7 @@ class ScannerPresenter(
     private var view: ScannerContract.View?,
     private val repository: StaffRepository,
 ) {
+    private val tag = "StaffQrScanner"
     private var job: Job? = null
 
     fun detach() {
@@ -36,12 +37,12 @@ class ScannerPresenter(
     }
 
     fun loadPurposes(eventId: String) {
-        android.util.Log.d("StaffScanner", "Loading scan purposes for eventId: $eventId")
+        android.util.Log.d(tag, "Loading scan purposes for eventId=$eventId")
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.getScanPurposesByEvent(eventId)) {
                 is NetworkResult.Success -> {
-                    android.util.Log.d("StaffScanner", "Loaded ${result.data.size} purposes for eventId: $eventId")
+                    android.util.Log.d(tag, "Loaded ${result.data.size} purposes for eventId=$eventId")
                     view?.showPurposes(result.data)
                 }
                 is NetworkResult.Error -> view?.showMessage(result.message)
@@ -62,6 +63,10 @@ class ScannerPresenter(
         }
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
+            android.util.Log.d(
+                tag,
+                "Submitting scan verify eventId=$eventId scanPurposeId=${purpose.scanPurposeId} scanPurposeCode=${purpose.code} qrValue=${qrValue.trim()}"
+            )
             val request = TransactionRequest(
                 eventId = UUID.fromString(eventId),
                 scanPurposeId = purpose.scanPurposeId,
@@ -70,8 +75,17 @@ class ScannerPresenter(
                 notes = notes.ifBlank { null },
             )
             when (val result = repository.verifyScan(request)) {
-                is NetworkResult.Success -> view?.showVerificationResult(result.data)
-                is NetworkResult.Error -> view?.showScanError(result.message)
+                is NetworkResult.Success -> {
+                    android.util.Log.d(
+                        tag,
+                        "backend verification result=SUCCESS eventId=${result.data.eventId} scanPurposeId=${result.data.scanPurposeId} message=${result.data.message}"
+                    )
+                    view?.showVerificationResult(result.data)
+                }
+                is NetworkResult.Error -> {
+                    android.util.Log.w(tag, "backend verification result=ERROR message=${result.message}")
+                    view?.showScanError(result.message)
+                }
                 NetworkResult.Loading -> Unit
             }
             view?.showLoading(false)

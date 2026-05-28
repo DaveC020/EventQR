@@ -2,9 +2,15 @@ package com.thedavelopers.eventqr.features.transactions.service;
 
 import java.time.Instant;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +42,9 @@ import com.thedavelopers.eventqr.shared.interfaces.ScanPurposePort;
 @Transactional
 public class TransactionService {
 
+    private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
+    private static final String DEFAULT_METADATA = "{}";
+
     private final TransactionLogRepository transactionLogRepository;
     private final TransactionRuleRepository transactionRuleRepository;
     private final EventLookupPort eventLookupPort;
@@ -46,6 +55,7 @@ public class TransactionService {
     private final AttendeeDirectoryPort attendeeDirectoryPort;
     private final EventStaffAssignmentRepository eventStaffAssignmentRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TransactionService(TransactionLogRepository transactionLogRepository,
                               TransactionRuleRepository transactionRuleRepository,
@@ -109,15 +119,16 @@ public class TransactionService {
 
         var qrSnapshot = qrCredentialPort.findByQrValue(request.qrValue())
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid QR credential"));
+        TransactionType transactionType = TransactionType.valueOf(purpose.code().name());
         if (!qrSnapshot.active()) {
             return reject(eventSnapshot.eventId(), qrSnapshot.attendeeUserId(), qrSnapshot.registrationId(),
                     qrSnapshot.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(), "Inactive QR credential",
-                    TransactionType.valueOf(purpose.code().name()), 0, request.notes());
+                    transactionType, 0, request.notes(), request.qrValue(), purpose.code().name(), purpose.name());
         }
         if (!eventSnapshot.eventId().equals(qrSnapshot.eventId())) {
             return reject(eventSnapshot.eventId(), qrSnapshot.attendeeUserId(), qrSnapshot.registrationId(),
                     qrSnapshot.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(), "Wrong event QR",
-                    TransactionType.valueOf(purpose.code().name()), 0, request.notes());
+                    transactionType, 0, request.notes(), request.qrValue(), purpose.code().name(), purpose.name());
         }
 
         var registration = registrationLookupPort.findByQrCredentialId(qrSnapshot.qrCredentialId())
@@ -126,25 +137,35 @@ public class TransactionService {
             return reject(eventSnapshot.eventId(), registration.attendeeUserId(), registration.registrationId(),
                 registration.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(),
                 "Registration does not belong to selected event",
-                TransactionType.valueOf(purpose.code().name()), 0, request.notes());
+                transactionType, 0, request.notes(), request.qrValue(), purpose.code().name(), purpose.name());
         }
 
-    String duplicateReason = determineDuplicateReason(purpose.code().name(), registration, rule);
+        String duplicateReason = determineDuplicateReason(purpose.code().name(), registration, rule);
         if (duplicateReason != null) {
             return reject(eventSnapshot.eventId(), registration.attendeeUserId(), registration.registrationId(),
                     registration.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(), duplicateReason,
-                TransactionType.valueOf(purpose.code().name()), 0, request.notes());
+                transactionType, 0, request.notes(), request.qrValue(), purpose.code().name(), purpose.name());
         }
 
-        TransactionType transactionType = TransactionType.valueOf(purpose.code().name());
         int pointsDelta = purpose.trackingOnly() ? 0 : Math.max(0, rule.getPointsAwarded());
-        TransactionLog log = createLog(eventSnapshot.eventId(), registration.attendeeUserId(), registration.registrationId(),
+        String metadata = buildMetadata(request.qrValue(), purpose.code().name(), purpose.name(), request.notes(), "staff-scan");
+        log.debug("Transaction save request eventId={} registrationId={} qrCredentialId={} scanPurposeId={} staffUserId={} transactionType={} metadata={}",
+                eventSnapshot.eventId(),
+                registration.registrationId(),
+                registration.qrCredentialId(),
+                purpose.scanPurposeId(),
+                request.staffUserId(),
+                transactionType,
+                metadata);
+        TransactionLog transactionLog = createLog(eventSnapshot.eventId(), registration.attendeeUserId(), registration.registrationId(),
                 registration.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(), TransactionResult.APPROVED,
-            transactionType, pointsDelta, null, request.notes());
+                transactionType, pointsDelta, null, metadata);
 
         applyTransactionEffects(transactionType, registration.registrationId());
 
-        TransactionLog saved = transactionLogRepository.save(log);
+        TransactionLog saved = transactionLogRepository.save(transactionLog);
+        log.debug("Transaction saved transactionLogId={} eventId={} scanPurposeId={} result={}",
+                saved.getId(), saved.getEventId(), saved.getScanPurposeId(), saved.getTransactionResult());
         applicationEventPublisher.publishEvent(new TransactionRecordedEvent(saved.getId(), saved.getEventId(),
                 saved.getAttendeeUserId(), saved.getRegistrationId(), saved.getQrCredentialId(), saved.getScanPurposeId(),
                 saved.getTransactionType(), saved.getTransactionResult(), saved.getPointsDelta(), saved.getStaffUserId(),
@@ -275,10 +296,23 @@ public class TransactionService {
 
     private TransactionResponse reject(UUID eventId, UUID attendeeUserId, UUID registrationId, UUID qrCredentialId,
                                        UUID scanPurposeId, UUID staffUserId, String reason,
-                           TransactionType transactionType, int pointsDelta, String notes) {
-        TransactionLog log = createLog(eventId, attendeeUserId, registrationId, qrCredentialId, scanPurposeId, staffUserId,
-            TransactionResult.REJECTED, transactionType, pointsDelta, reason, notes);
-        TransactionLog saved = transactionLogRepository.save(log);
+                                       TransactionType transactionType, int pointsDelta, String notes, String qrValue,
+                                       String scanPurposeCode, String scanPurposeLabel) {
+        String metadata = buildMetadata(qrValue, scanPurposeCode, scanPurposeLabel, notes, "staff-scan");
+        log.debug("Transaction reject save request eventId={} registrationId={} qrCredentialId={} scanPurposeId={} staffUserId={} transactionType={} metadata={} reason={}",
+                eventId,
+                registrationId,
+                qrCredentialId,
+                scanPurposeId,
+                staffUserId,
+                transactionType,
+                metadata,
+                reason);
+        TransactionLog transactionLog = createLog(eventId, attendeeUserId, registrationId, qrCredentialId, scanPurposeId, staffUserId,
+                TransactionResult.REJECTED, transactionType, pointsDelta, reason, metadata);
+        TransactionLog saved = transactionLogRepository.save(transactionLog);
+        log.debug("Transaction saved transactionLogId={} eventId={} scanPurposeId={} result={}",
+                saved.getId(), saved.getEventId(), saved.getScanPurposeId(), saved.getTransactionResult());
         applicationEventPublisher.publishEvent(new TransactionRecordedEvent(saved.getId(), saved.getEventId(),
                 saved.getAttendeeUserId(), saved.getRegistrationId(), saved.getQrCredentialId(), saved.getScanPurposeId(),
                 saved.getTransactionType(), saved.getTransactionResult(), saved.getPointsDelta(), saved.getStaffUserId(),
@@ -288,7 +322,7 @@ public class TransactionService {
 
     private TransactionLog createLog(UUID eventId, UUID attendeeUserId, UUID registrationId, UUID qrCredentialId,
                                      UUID scanPurposeId, UUID staffUserId, TransactionResult result,
-                                     TransactionType transactionType, int pointsDelta, String reason, String notes) {
+                                     TransactionType transactionType, int pointsDelta, String reason, String metadata) {
         TransactionLog log = new TransactionLog();
         log.setEventId(eventId);
         log.setAttendeeUserId(attendeeUserId);
@@ -300,11 +334,27 @@ public class TransactionService {
         log.setTransactionResult(result);
         log.setPointsDelta(pointsDelta);
         log.setReason(reason);
-        if (notes != null && !notes.isBlank()) {
-            log.setMetadata("{\"notes\":\"" + notes.replace("\"", "\\\"") + "\"}");
-        }
+        log.setMetadata(metadata == null || metadata.isBlank() ? DEFAULT_METADATA : metadata);
         log.setScannedAt(Instant.now());
         return log;
+    }
+
+    private String buildMetadata(String qrValue, String scanPurposeCode, String scanPurposeLabel,
+                                 String notes, String source) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("qrValue", qrValue);
+        payload.put("scanPurposeCode", scanPurposeCode);
+        payload.put("scanPurposeLabel", scanPurposeLabel);
+        payload.put("source", source);
+        if (notes != null && !notes.isBlank()) {
+            payload.put("notes", notes);
+        }
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException exception) {
+            log.warn("Unable to serialize transaction metadata; using default", exception);
+            return DEFAULT_METADATA;
+        }
     }
 
     private TransactionResponse toResponse(TransactionLog log) {

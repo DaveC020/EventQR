@@ -11,6 +11,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -51,9 +53,20 @@ public class TransactionLog extends BaseEntity {
     @Column(length = 2000)
     private String reason;
 
-    @Column(length = 4000)
-    private String metadata;
+    @Column(nullable = false, length = 4000)
+    private String metadata = "{}";
 
     @Column(nullable = false)
     private int pointsDelta;
+
+    @PrePersist
+    @PreUpdate
+    void ensureDefaults() {
+        if (metadata == null || metadata.isBlank()) {
+            metadata = "{}";
+        }
+        if (scannedAt == null) {
+            scannedAt = Instant.now();
+        }
+    }
 }

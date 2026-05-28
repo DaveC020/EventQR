@@ -47,6 +47,13 @@ public class GlobalExceptionHandler {
             }
             return build(HttpStatus.CONFLICT, "Staff assignment failed due to invalid assignment data.", request);
         }
+        if (request.getRequestURI() != null
+                && request.getRequestURI().matches(".*/api/v1/staff/events/.*/scan/.*|.*/api/v1/transactions$")) {
+            if (detail != null && detail.toLowerCase().contains("metadata")) {
+                return build(HttpStatus.CONFLICT, "Transaction failed: metadata missing.", request);
+            }
+            return build(HttpStatus.CONFLICT, "Transaction failed due to invalid transaction data.", request);
+        }
         return build(HttpStatus.CONFLICT, "Registration failed. Please try again.", request);
     }
 
