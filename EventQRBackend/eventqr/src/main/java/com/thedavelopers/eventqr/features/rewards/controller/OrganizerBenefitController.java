@@ -84,7 +84,7 @@ public class OrganizerBenefitController {
     private void requireOrganizerOrAdmin(HttpServletRequest request) {
         AccountRole role = jwtService.extractRoleFromBearer(request.getHeader("Authorization"));
         if (role == AccountRole.ATTENDEE) {
-            throw new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Organizer or admin access required");
+            throw new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Organizer or admin access required");
         }
     }
 }

@@ -18,17 +18,17 @@ import com.thedavelopers.eventqr.features.registrations.repository.EventRegistra
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.constants.EventStatus;
 import com.thedavelopers.eventqr.shared.constants.RegistrationStatus;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ForbiddenException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.AttendeeDirectoryPort;
-import com.thedavelopers.eventqr.shared.port.EventLookupPort;
-import com.thedavelopers.eventqr.shared.port.EventLookupPort.EventSnapshot;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort.QrCredentialSnapshot;
-import com.thedavelopers.eventqr.shared.port.RegistrationCommandPort;
-import com.thedavelopers.eventqr.shared.port.RegistrationLookupPort;
-import com.thedavelopers.eventqr.shared.port.RegistrationLookupPort.RegistrationSnapshot;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ForbiddenException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort;
+import com.thedavelopers.eventqr.shared.interfaces.EventLookupPort;
+import com.thedavelopers.eventqr.shared.interfaces.EventLookupPort.EventSnapshot;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort.QrCredentialSnapshot;
+import com.thedavelopers.eventqr.shared.interfaces.RegistrationCommandPort;
+import com.thedavelopers.eventqr.shared.interfaces.RegistrationLookupPort;
+import com.thedavelopers.eventqr.shared.interfaces.RegistrationLookupPort.RegistrationSnapshot;
 
 @Service
 @Transactional

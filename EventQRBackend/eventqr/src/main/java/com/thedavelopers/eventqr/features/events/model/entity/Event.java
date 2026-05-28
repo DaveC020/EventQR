@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.thedavelopers.eventqr.shared.constants.EventStatus;
-import com.thedavelopers.eventqr.shared.entity.BaseEntity;
-import com.thedavelopers.eventqr.shared.port.EventLookupPort.EventSnapshot;
+import com.thedavelopers.eventqr.shared.utils.BaseEntity;
+import com.thedavelopers.eventqr.shared.interfaces.EventLookupPort.EventSnapshot;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

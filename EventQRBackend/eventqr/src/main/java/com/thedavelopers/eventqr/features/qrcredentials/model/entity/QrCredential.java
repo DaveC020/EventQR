@@ -4,8 +4,8 @@ import java.util.UUID;
 
 import com.thedavelopers.eventqr.shared.constants.QrDeliveryStatus;
 import com.thedavelopers.eventqr.shared.constants.QrDisplayStatus;
-import com.thedavelopers.eventqr.shared.entity.BaseEntity;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort.QrCredentialSnapshot;
+import com.thedavelopers.eventqr.shared.utils.BaseEntity;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort.QrCredentialSnapshot;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

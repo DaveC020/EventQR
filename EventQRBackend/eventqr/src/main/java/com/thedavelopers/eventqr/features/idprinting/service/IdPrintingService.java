@@ -14,10 +14,10 @@ import com.thedavelopers.eventqr.features.idprinting.model.entity.IdPrintLog;
 import com.thedavelopers.eventqr.features.idprinting.model.entity.IdTemplate;
 import com.thedavelopers.eventqr.features.idprinting.repository.IdPrintLogRepository;
 import com.thedavelopers.eventqr.features.idprinting.repository.IdTemplateRepository;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort;
-import com.thedavelopers.eventqr.shared.port.RegistrationLookupPort;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort;
+import com.thedavelopers.eventqr.shared.interfaces.RegistrationLookupPort;
 
 @Service
 @Transactional

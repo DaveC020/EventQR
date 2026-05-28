@@ -23,8 +23,8 @@ import com.thedavelopers.eventqr.features.registrations.model.entity.EventRegist
 import com.thedavelopers.eventqr.features.registrations.repository.EventRegistrationRepository;
 import com.thedavelopers.eventqr.features.rewards.repository.PointTransactionRepository;
 import com.thedavelopers.eventqr.features.rewards.repository.RewardRedemptionRepository;
-import com.thedavelopers.eventqr.features.scanpurposes.model.entity.ScanPurpose;
-import com.thedavelopers.eventqr.features.scanpurposes.repository.ScanPurposeRepository;
+import com.thedavelopers.eventqr.features.scanning.model.entity.ScanPurpose;
+import com.thedavelopers.eventqr.features.scanning.repository.ScanPurposeRepository;
 import com.thedavelopers.eventqr.features.transactions.model.entity.TransactionLog;
 import com.thedavelopers.eventqr.features.transactions.model.entity.TransactionRule;
 import com.thedavelopers.eventqr.features.transactions.repository.TransactionLogRepository;
@@ -38,10 +38,10 @@ import com.thedavelopers.eventqr.shared.constants.RegistrationStatus;
 import com.thedavelopers.eventqr.shared.constants.ScanPurposeCode;
 import com.thedavelopers.eventqr.shared.constants.TransactionResult;
 import com.thedavelopers.eventqr.shared.constants.TransactionType;
-import com.thedavelopers.eventqr.shared.exception.BadRequestException;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ForbiddenException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.exceptions.BadRequestException;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ForbiddenException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 @Transactional
@@ -775,3 +775,4 @@ public class OrganizerService {
         };
     }
 }
+

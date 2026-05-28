@@ -30,9 +30,9 @@ import com.thedavelopers.eventqr.shared.constants.RedemptionStatus;
 import com.thedavelopers.eventqr.shared.constants.RewardStatus;
 import com.thedavelopers.eventqr.shared.constants.TransactionResult;
 import com.thedavelopers.eventqr.shared.constants.TransactionType;
-import com.thedavelopers.eventqr.shared.event.TransactionRecordedEvent;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.TransactionRecordedEvent;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 @Transactional

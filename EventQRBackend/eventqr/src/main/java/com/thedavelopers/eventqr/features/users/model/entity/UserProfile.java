@@ -2,8 +2,8 @@ package com.thedavelopers.eventqr.features.users.model.entity;
 
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.constants.AccountStatus;
-import com.thedavelopers.eventqr.shared.entity.BaseEntity;
-import com.thedavelopers.eventqr.shared.port.AttendeeDirectoryPort.AttendeeSnapshot;
+import com.thedavelopers.eventqr.shared.utils.BaseEntity;
+import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort.AttendeeSnapshot;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

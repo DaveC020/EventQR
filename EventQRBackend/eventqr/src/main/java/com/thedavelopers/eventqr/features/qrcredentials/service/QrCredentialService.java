@@ -10,11 +10,11 @@ import com.thedavelopers.eventqr.features.qrcredentials.model.entity.QrCredentia
 import com.thedavelopers.eventqr.features.qrcredentials.repository.QrCredentialRepository;
 import com.thedavelopers.eventqr.shared.constants.QrDeliveryStatus;
 import com.thedavelopers.eventqr.shared.constants.QrDisplayStatus;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort.QrCredentialSnapshot;
-import com.thedavelopers.eventqr.shared.util.QrValueGenerator;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort.QrCredentialSnapshot;
+import com.thedavelopers.eventqr.shared.utils.QrValueGenerator;
 
 @Service
 @Transactional

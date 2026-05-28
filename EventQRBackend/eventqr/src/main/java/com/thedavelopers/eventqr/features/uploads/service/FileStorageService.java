@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.thedavelopers.eventqr.features.uploads.model.dto.StoredFileResponse;
-import com.thedavelopers.eventqr.shared.exception.BadRequestException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.exceptions.BadRequestException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 public class FileStorageService {

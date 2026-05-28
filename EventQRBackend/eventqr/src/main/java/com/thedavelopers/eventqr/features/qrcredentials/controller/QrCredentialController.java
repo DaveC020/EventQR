@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.thedavelopers.eventqr.features.qrcredentials.service.QrCredentialService;
 import com.thedavelopers.eventqr.features.registrations.service.RegistrationService;
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort.QrCredentialSnapshot;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort.QrCredentialSnapshot;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
 

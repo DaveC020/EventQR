@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
-import com.thedavelopers.eventqr.shared.exception.UnauthorizedException;
+import com.thedavelopers.eventqr.shared.exceptions.UnauthorizedException;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -98,3 +98,4 @@ public class JwtService {
         }
     }
 }
+

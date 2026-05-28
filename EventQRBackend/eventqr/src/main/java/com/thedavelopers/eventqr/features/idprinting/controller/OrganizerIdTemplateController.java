@@ -100,7 +100,7 @@ public class OrganizerIdTemplateController {
 
     private void requireNonAttendee(HttpServletRequest request) {
         if (jwtService.extractRoleFromBearer(request.getHeader("Authorization")) == AccountRole.ATTENDEE) {
-            throw new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Staff or organizer access required");
+            throw new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Staff or organizer access required");
         }
     }
 }

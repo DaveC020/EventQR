@@ -12,7 +12,7 @@ import com.thedavelopers.eventqr.features.rewards.repository.EventBenefitReposit
 import com.thedavelopers.eventqr.features.transactions.service.TransactionService;
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse;
 import com.thedavelopers.eventqr.shared.constants.TransactionType;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 @Transactional

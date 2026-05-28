@@ -3,7 +3,7 @@ package com.thedavelopers.eventqr.features.organizer.model.entity;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.thedavelopers.eventqr.shared.entity.BaseEntity;
+import com.thedavelopers.eventqr.shared.utils.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -52,3 +52,4 @@ public class EventStaffAssignment extends BaseEntity {
     @Column(name = "added_at", nullable = false)
     private Instant addedAt = Instant.now();
 }
+

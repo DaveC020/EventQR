@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.thedavelopers.eventqr.shared.constants.NotificationStatus;
-import com.thedavelopers.eventqr.shared.entity.BaseEntity;
+import com.thedavelopers.eventqr.shared.utils.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

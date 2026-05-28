@@ -25,14 +25,14 @@ import com.thedavelopers.eventqr.features.rewards.model.dto.RewardRedemptionResp
 import com.thedavelopers.eventqr.features.rewards.model.dto.PointAdjustmentRequest;
 import com.thedavelopers.eventqr.features.rewards.model.dto.PointBalanceResponse;
 import com.thedavelopers.eventqr.features.rewards.service.RewardService;
-import com.thedavelopers.eventqr.features.scanpurposes.service.ScanPurposeService;
+import com.thedavelopers.eventqr.features.scanning.service.ScanPurposeService;
 import com.thedavelopers.eventqr.features.staff.model.dto.StaffAssignedEventResponse;
 import com.thedavelopers.eventqr.features.transactions.model.dto.ScanVerificationResponse;
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionRequest;
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse;
 import com.thedavelopers.eventqr.features.transactions.service.TransactionService;
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
-import com.thedavelopers.eventqr.shared.port.ScanPurposePort.ScanPurposeSnapshot;
+import com.thedavelopers.eventqr.shared.interfaces.ScanPurposePort.ScanPurposeSnapshot;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
 
@@ -188,7 +188,7 @@ public class StaffController {
         RegistrationResponse registration = registrationService.findByAttendeeUserId(attendeeId).stream()
                 .filter(item -> item.eventId().equals(eventId))
                 .findFirst()
-                .orElseThrow(() -> new com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException("Attendee not found for event"));
+                .orElseThrow(() -> new com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException("Attendee not found for event"));
         return ResponseEntity.ok(ApiResponse.success(registration));
     }
 
@@ -224,7 +224,7 @@ public class StaffController {
 
     private UUID currentUserId(HttpServletRequest request) {
         if (jwtService.extractRoleFromBearer(request.getHeader("Authorization")) == AccountRole.ATTENDEE) {
-            throw new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Staff access required");
+            throw new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Staff access required");
         }
         return jwtService.extractUserIdFromBearer(request.getHeader("Authorization"));
     }
@@ -235,13 +235,13 @@ public class StaffController {
             return null;
         }
         return eventStaffAssignmentRepository.findByEventIdAndStaffUserIdAndActiveTrue(eventId, staffUserId)
-                .orElseThrow(() -> new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Staff user is not actively assigned to this event"));
+                .orElseThrow(() -> new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Staff user is not actively assigned to this event"));
     }
 
     private void requireScanPermission(HttpServletRequest request, UUID eventId) {
         EventStaffAssignment assignment = requireActiveAssignment(request, eventId);
         if (assignment != null && !assignment.isCanScan()) {
-            throw new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Staff user is not allowed to scan for this event");
+            throw new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Staff user is not allowed to scan for this event");
         }
     }
 }

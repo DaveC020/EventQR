@@ -8,7 +8,7 @@ import com.thedavelopers.eventqr.features.auth.model.dto.LoginRequest;
 import com.thedavelopers.eventqr.features.auth.model.dto.LoginResponse;
 import com.thedavelopers.eventqr.features.users.model.entity.UserProfile;
 import com.thedavelopers.eventqr.features.users.repository.UserProfileRepository;
-import com.thedavelopers.eventqr.shared.exception.UnauthorizedException;
+import com.thedavelopers.eventqr.shared.exceptions.UnauthorizedException;
 import com.thedavelopers.eventqr.shared.security.JwtService;
 
 @Service

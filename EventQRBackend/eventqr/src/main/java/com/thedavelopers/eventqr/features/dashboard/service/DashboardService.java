@@ -19,7 +19,7 @@ import com.thedavelopers.eventqr.features.users.model.entity.UserProfile;
 import com.thedavelopers.eventqr.features.users.repository.UserProfileRepository;
 import com.thedavelopers.eventqr.shared.constants.EventStatus;
 import com.thedavelopers.eventqr.shared.constants.RegistrationStatus;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 @Transactional(readOnly = true)
@@ -83,3 +83,4 @@ public class DashboardService {
             .toList();
     }
 }
+

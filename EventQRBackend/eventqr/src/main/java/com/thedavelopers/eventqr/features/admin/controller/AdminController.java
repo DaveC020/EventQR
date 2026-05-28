@@ -22,9 +22,9 @@ import com.thedavelopers.eventqr.features.users.model.dto.UserRoleRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.UserStatusRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.UserRequest;
 import com.thedavelopers.eventqr.features.users.service.UserService;
-import com.thedavelopers.eventqr.features.events.model.dto.EventRequestDecisionRequest;
-import com.thedavelopers.eventqr.features.events.model.dto.EventRequestResponse;
-import com.thedavelopers.eventqr.features.events.service.EventCreationRequestService;
+import com.thedavelopers.eventqr.features.eventrequests.model.dto.EventRequestDecisionRequest;
+import com.thedavelopers.eventqr.features.eventrequests.model.dto.EventRequestResponse;
+import com.thedavelopers.eventqr.features.eventrequests.service.EventCreationRequestService;
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
@@ -138,8 +138,9 @@ public class AdminController {
 
     private void requireAdmin(HttpServletRequest request) {
         if (jwtService.extractRoleFromBearer(request.getHeader("Authorization")) != AccountRole.ADMIN) {
-            throw new com.thedavelopers.eventqr.shared.exception.ForbiddenException("Admin access required");
+            throw new com.thedavelopers.eventqr.shared.exceptions.ForbiddenException("Admin access required");
         }
     }
 
 }
+

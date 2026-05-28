@@ -19,7 +19,7 @@ import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationRe
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse;
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationSubmissionResponse;
 import com.thedavelopers.eventqr.features.registrations.service.RegistrationService;
-import com.thedavelopers.eventqr.shared.port.QrCredentialPort.QrCredentialSnapshot;
+import com.thedavelopers.eventqr.shared.interfaces.QrCredentialPort.QrCredentialSnapshot;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
 

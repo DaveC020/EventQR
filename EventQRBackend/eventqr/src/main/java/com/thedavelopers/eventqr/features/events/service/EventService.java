@@ -14,9 +14,9 @@ import com.thedavelopers.eventqr.features.events.model.dto.EventResponse;
 import com.thedavelopers.eventqr.features.events.model.entity.Event;
 import com.thedavelopers.eventqr.features.events.repository.EventRepository;
 import com.thedavelopers.eventqr.shared.constants.EventStatus;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.EventLookupPort;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.EventLookupPort;
 
 @Service
 @Transactional
@@ -166,3 +166,4 @@ public class EventService implements EventLookupPort {
         return value == null ? 0 : value;
     }
 }
+

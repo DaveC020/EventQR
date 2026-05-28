@@ -13,11 +13,11 @@ import com.thedavelopers.eventqr.features.users.model.entity.UserProfile;
 import com.thedavelopers.eventqr.features.users.repository.UserProfileRepository;
 import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.constants.AccountStatus;
-import com.thedavelopers.eventqr.shared.exception.BadRequestException;
-import com.thedavelopers.eventqr.shared.exception.ConflictException;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
-import com.thedavelopers.eventqr.shared.port.AttendeeDirectoryPort;
-import com.thedavelopers.eventqr.shared.port.AttendeeDirectoryPort.AttendeeSnapshot;
+import com.thedavelopers.eventqr.shared.exceptions.BadRequestException;
+import com.thedavelopers.eventqr.shared.exceptions.ConflictException;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort;
+import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort.AttendeeSnapshot;
 
 @Service
 @Transactional

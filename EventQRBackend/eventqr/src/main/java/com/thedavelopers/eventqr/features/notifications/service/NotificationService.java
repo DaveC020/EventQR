@@ -14,8 +14,8 @@ import com.thedavelopers.eventqr.features.notifications.model.entity.Notificatio
 import com.thedavelopers.eventqr.features.notifications.repository.NotificationRepository;
 import com.thedavelopers.eventqr.shared.constants.NotificationStatus;
 import com.thedavelopers.eventqr.shared.constants.TransactionResult;
-import com.thedavelopers.eventqr.shared.event.TransactionRecordedEvent;
-import com.thedavelopers.eventqr.shared.exception.ResourceNotFoundException;
+import com.thedavelopers.eventqr.shared.interfaces.TransactionRecordedEvent;
+import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 
 @Service
 @Transactional
