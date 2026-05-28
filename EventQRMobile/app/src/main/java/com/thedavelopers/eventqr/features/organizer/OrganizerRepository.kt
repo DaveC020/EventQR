@@ -21,6 +21,8 @@ import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurpo
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurposeRequestDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerStaffDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionRuleDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.TransactionRuleRequest
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerUserSearchDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentRequestDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentUpdateRequestDto
@@ -32,6 +34,7 @@ import com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResp
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse
 import com.thedavelopers.eventqr.features.users.model.dto.UserRequest
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 
 data class OrganizerMvpLoad<T>(
     val data: T,
@@ -50,25 +53,30 @@ class OrganizerRepository(private val context: Context) {
     private val selectionPrefs = context.getSharedPreferences("organizer_mvp_selection", Context.MODE_PRIVATE)
 
     fun getApprovedOrganizerEvents(): List<OrganizerMvpEvent> =
-        OrganizerMvpPlaceholders.cachedEvents.ifEmpty { OrganizerMvpPlaceholders.events }
-
-    fun getOrganizerAttendees(eventId: String): List<OrganizerMvpAttendee> =
-        OrganizerMvpPlaceholders.attendees.filter { it.eventId == eventId }
-
-    fun getOrganizerTransactions(eventId: String): List<OrganizerMvpTransaction> =
-        OrganizerMvpPlaceholders.transactions.filter { it.eventId == eventId }
-
-    fun getOrganizerStaff(eventId: String): List<OrganizerMvpStaff> =
-        OrganizerMvpPlaceholders.editableStaff.filter { it.assignedEventId == eventId }
-
-    fun searchAvailableStaffUsers(query: String): List<OrganizerMvpStaff> =
-        OrganizerMvpPlaceholders.availableUsers.filter {
-            query.isBlank() ||
-                it.name.contains(query, ignoreCase = true) ||
-                it.email.contains(query, ignoreCase = true)
+        if (OrganizerMvpPlaceholders.cachedEvents.isNotEmpty()) {
+            OrganizerMvpPlaceholders.cachedEvents.filter { it.status.equals("Approved", ignoreCase = true) }
+        } else {
+            runBlocking {
+                when (val result = fetchOrganizerEvents()) {
+                    is NetworkResult.Success -> {
+                        val mapped = result.data.map { it.toMvpEvent() }
+                        OrganizerMvpPlaceholders.cachedEvents = mapped
+                        mapped.filter { it.status.equals("Approved", ignoreCase = true) }
+                    }
+                    else -> emptyList()
+                }
+            }
         }
 
-    fun getOrganizerScanPurposes(): List<OrganizerMvpScanPurpose> = OrganizerMvpPlaceholders.editableScanPurposes
+    fun getOrganizerAttendees(eventId: String): List<OrganizerMvpAttendee> = emptyList()
+
+    fun getOrganizerTransactions(eventId: String): List<OrganizerMvpTransaction> = emptyList()
+
+    fun getOrganizerStaff(eventId: String): List<OrganizerMvpStaff> = emptyList()
+
+    fun searchAvailableStaffUsers(query: String): List<OrganizerMvpStaff> = emptyList()
+
+    fun getOrganizerScanPurposes(): List<OrganizerMvpScanPurpose> = emptyList()
 
     fun getSelectedEventId(): String? = selectionPrefs.getString(KEY_SELECTED_EVENT_ID, null)
 
@@ -94,34 +102,32 @@ class OrganizerRepository(private val context: Context) {
                 OrganizerMvpPlaceholders.cachedEvents = mapped
                 OrganizerMvpLoad(mapped, OrganizerMvpDataSource.BACKEND)
             }
-            is NetworkResult.Error -> mockLoad(OrganizerMvpPlaceholders.events, result.message)
-            NetworkResult.Loading -> mockLoad(OrganizerMvpPlaceholders.events, null)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
         }
     }
 
     suspend fun loadAttendeesForMvp(eventId: String): OrganizerMvpLoad<List<OrganizerMvpAttendee>> {
         return when (val result = fetchOrganizerAttendees(eventId)) {
             is NetworkResult.Success -> OrganizerMvpLoad(result.data.map { it.toMvpAttendee() }, OrganizerMvpDataSource.BACKEND)
-            is NetworkResult.Error -> mockLoad(getOrganizerAttendees(eventId), result.message)
-            NetworkResult.Loading -> mockLoad(getOrganizerAttendees(eventId), null)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
         }
     }
 
     suspend fun loadTransactionsForMvp(eventId: String, eventTitle: String): OrganizerMvpLoad<List<OrganizerMvpTransaction>> {
         return when (val result = fetchOrganizerTransactions(eventId)) {
             is NetworkResult.Success -> OrganizerMvpLoad(result.data.map { it.toMvpTransaction(eventTitle) }, OrganizerMvpDataSource.BACKEND)
-            is NetworkResult.Error -> mockLoad(getOrganizerTransactions(eventId), result.message)
-            NetworkResult.Loading -> mockLoad(getOrganizerTransactions(eventId), null)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
         }
     }
 
     suspend fun loadScanPurposesForMvp(eventId: String): OrganizerMvpLoad<List<OrganizerMvpScanPurpose>> {
         return when (val result = fetchOrganizerScanPurposes(eventId)) {
-            is NetworkResult.Success -> OrganizerMvpLoad(result.data.map { it.toMvpScanPurpose() }.ifEmpty {
-                OrganizerMvpPlaceholders.scanPurposes
-            }, OrganizerMvpDataSource.BACKEND)
-            is NetworkResult.Error -> mockLoad(getOrganizerScanPurposes(), result.message)
-            NetworkResult.Loading -> mockLoad(getOrganizerScanPurposes(), null)
+            is NetworkResult.Success -> OrganizerMvpLoad(result.data.map { it.toMvpScanPurpose() }, OrganizerMvpDataSource.BACKEND)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
         }
     }
 
@@ -137,12 +143,10 @@ class OrganizerRepository(private val context: Context) {
         return when (val result = fetchOrganizerStaff(event.id)) {
             is NetworkResult.Success -> {
                 val mapped = result.data.map { it.toMvpStaff(event.title) }
-                OrganizerMvpPlaceholders.editableStaff.removeAll { it.assignedEventId == event.id }
-                OrganizerMvpPlaceholders.editableStaff.addAll(mapped)
                 OrganizerMvpLoad(mapped, OrganizerMvpDataSource.BACKEND)
             }
-            is NetworkResult.Error -> mockLoad(getOrganizerStaff(event.id), result.message)
-            NetworkResult.Loading -> mockLoad(getOrganizerStaff(event.id), null)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
         }
     }
 
@@ -201,14 +205,41 @@ class OrganizerRepository(private val context: Context) {
             }
             when (result) {
                 is NetworkResult.Success -> saved.add(result.data.toMvpScanPurpose())
-                is NetworkResult.Error -> return mockLoad(purposes, result.message)
+                is NetworkResult.Error -> return OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
                 NetworkResult.Loading -> Unit
             }
         }
-        OrganizerMvpPlaceholders.editableScanPurposes.clear()
-        OrganizerMvpPlaceholders.editableScanPurposes.addAll(saved.ifEmpty { purposes })
         return OrganizerMvpLoad(saved.ifEmpty { purposes }, OrganizerMvpDataSource.BACKEND)
     }
+
+    suspend fun loadTransactionRulesForMvp(eventId: String): OrganizerMvpLoad<List<OrganizerTransactionRuleDto>> {
+        return when (val result = getTransactionRules(eventId)) {
+            is NetworkResult.Success -> OrganizerMvpLoad(result.data, OrganizerMvpDataSource.BACKEND)
+            is NetworkResult.Error -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.MOCK, null)
+        }
+    }
+
+    suspend fun saveTransactionRuleForMvp(
+        eventId: String,
+        request: TransactionRuleRequest,
+    ): OrganizerMvpLoad<OrganizerTransactionRuleDto> {
+        return when (val result = saveTransactionRule(eventId, request)) {
+            is NetworkResult.Success -> OrganizerMvpLoad(result.data, OrganizerMvpDataSource.BACKEND)
+            is NetworkResult.Error -> OrganizerMvpLoad(OrganizerTransactionRuleDto(eventId = UUID.fromString(eventId), scanPurposeId = request.scanPurposeId), OrganizerMvpDataSource.MOCK, result.message)
+            NetworkResult.Loading -> OrganizerMvpLoad(OrganizerTransactionRuleDto(eventId = UUID.fromString(eventId), scanPurposeId = request.scanPurposeId), OrganizerMvpDataSource.MOCK, null)
+        }
+    }
+
+    suspend fun enableScanPurposeForMvp(eventId: String, purposeId: String, enabled: Boolean) =
+        if (enabled) safeApiCall { apiService.enableOrganizerScanPurpose(eventId, purposeId) }
+        else safeApiCall { apiService.disableOrganizerScanPurpose(eventId, purposeId) }
+
+    suspend fun updateScanPurposeTrackingOnlyForMvp(eventId: String, purposeId: String, trackingOnly: Boolean) =
+        safeApiCall { apiService.updateOrganizerScanPurposeTrackingOnly(eventId, purposeId, trackingOnly) }
+
+    suspend fun deleteScanPurposeForMvp(eventId: String, purposeId: String) =
+        safeApiCall { apiService.deleteOrganizerScanPurpose(eventId, purposeId) }
 
     private suspend fun buildEventSnapshot(event: EventResponse): OrganizerMvpEvent {
         val registrations = (getRegistrationsByEvent(event.eventId.toString()) as? NetworkResult.Success)?.data.orEmpty()
@@ -296,6 +327,13 @@ class OrganizerRepository(private val context: Context) {
     suspend fun getEventReport(eventId: String) = safeApiCall { apiService.getEventReport(eventId) }
 
     suspend fun getTransactionsByEvent(eventId: String) = safeApiCall { apiService.getTransactionsByEvent(eventId) }
+
+    suspend fun getTransactionRules(eventId: String) = safeApiCall { apiService.getOrganizerTransactionRules(eventId) }
+
+    suspend fun saveTransactionRule(
+        eventId: String,
+        request: TransactionRuleRequest,
+    ) = safeApiCall { apiService.saveOrganizerTransactionRule(eventId, request) }
 
     suspend fun createNotification(request: NotificationRequest) = safeApiCall { apiService.createNotification(request) }
     suspend fun getNotificationsByEvent(eventId: String) = safeApiCall { apiService.getNotificationsByEvent(eventId) }

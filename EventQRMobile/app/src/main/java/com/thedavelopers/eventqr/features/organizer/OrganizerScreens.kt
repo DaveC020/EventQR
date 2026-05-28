@@ -26,6 +26,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.thedavelopers.eventqr.SignIn
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionRuleDto
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -358,8 +359,8 @@ private fun AppCompatActivity.dataSourceBanner(load: OrganizerMvpLoad<*>): Linea
     if (load.source == OrganizerMvpDataSource.BACKEND) null else card(10).apply {
         elevation = 0f
         background = rounded(Color.parseColor("#FFF7ED"), 10, Color.parseColor("#FED7AA"), density = resources.displayMetrics.density)
-        addView(text("Showing local demo data", 13, true, WARNING))
-        addView(text(load.message ?: OrganizerMvpPlaceholders.TODO_BACKEND, 12, false, MUTED))
+        addView(text("Live data temporarily unavailable", 13, true, WARNING))
+        addView(text(load.message ?: "Backend request failed. Showing an empty state.", 12, false, MUTED))
     }
 
 private fun AppCompatActivity.emptyState(message: String, button: String? = null, action: (() -> Unit)? = null): LinearLayout =
@@ -417,8 +418,8 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
             content.addView(emptyState("No approved event is selected yet.", "Open My Events") {
                 openOrganizerPage(ManageEventsActivity::class.java)
             })
-            if (load.source == OrganizerMvpDataSource.MOCK) {
-                content.addView(errorState(load.message ?: OrganizerMvpPlaceholders.TODO_BACKEND) { loadDashboard() })
+            load.message?.let {
+                content.addView(errorState(it) { loadDashboard() })
             }
             return
         }
@@ -532,7 +533,7 @@ open class ManageEventsActivity : AppCompatActivity() {
         val content = organizerShell("My Event Requests", selectedNav = NAV_EVENTS)
         content.addView(primaryButton("+ Create New Event Request") {
             // TODO: Connect to the existing event request creation flow when organizer request UX is finalized.
-            Toast.makeText(this, "Create event request placeholder", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Event request creation is not wired into this screen.", Toast.LENGTH_SHORT).show()
         })
         search = EditText(this).apply {
             hint = "Search events"
@@ -804,8 +805,8 @@ open class AttendeeManagementActivity : AppCompatActivity() {
             addView(section("Recent Rejected Scans"))
             addView(text(attendee.recentRejectedScans.ifEmpty { listOf("No recent rejected scans.") }.joinToString("\n"), 13, false, MUTED))
             addView(ghostButton("View transactions") { openOrganizerPage(TransactionLogsActivity::class.java, selectedEvent.id) })
-            addView(ghostButton("Reprint ID") { Toast.makeText(this@AttendeeManagementActivity, "Reprint ID placeholder", Toast.LENGTH_SHORT).show() })
-            addView(ghostButton("Manual support note") { Toast.makeText(this@AttendeeManagementActivity, "Support note placeholder", Toast.LENGTH_SHORT).show() })
+            addView(ghostButton("Reprint ID") { Toast.makeText(this@AttendeeManagementActivity, "ID reprint flow is not wired on this screen.", Toast.LENGTH_SHORT).show() })
+            addView(ghostButton("Manual support note") { Toast.makeText(this@AttendeeManagementActivity, "Support notes are not wired on this screen.", Toast.LENGTH_SHORT).show() })
         })
         detail.addView(stateCard())
     }
@@ -1068,7 +1069,7 @@ open class ManageUsersActivity : AppCompatActivity() {
     private lateinit var search: EditText
     private lateinit var results: LinearLayout
     private lateinit var assigned: LinearLayout
-    private val assignedStaff = OrganizerMvpPlaceholders.editableStaff
+    private val assignedStaff = mutableListOf<OrganizerMvpStaff>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -1164,14 +1165,14 @@ open class ManageUsersActivity : AppCompatActivity() {
             addView(text("Added: ${staff.addedDate}", 12, false, MUTED))
             if (canAdd) {
                 addView(primaryButton("Add staff to event") {
-                    if (assignedStaff.any { it.email == staff.email && it.assignedEventId == staff.assignedEventId }) {
+                    if (assignedStaff.any { it.email.equals(staff.email, ignoreCase = true) && it.accessStatus.equals("Active", ignoreCase = true) }) {
                         Toast.makeText(this@ManageUsersActivity, "Duplicate staff assignment", Toast.LENGTH_SHORT).show()
                     } else {
                         MainScope().launch {
                             val source = repository.addStaffForMvp(selectedEvent, staff)
                             assignedStaff.add(source.data)
                             source.message?.let {
-                                Toast.makeText(this@ManageUsersActivity, "Saved locally: $it", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@ManageUsersActivity, it, Toast.LENGTH_SHORT).show()
                             }
                             renderAssigned()
                         }
@@ -1187,7 +1188,7 @@ open class ManageUsersActivity : AppCompatActivity() {
                             val source = repository.updateStaffForMvp(selectedEvent, updated)
                             assignedStaff[index] = source.data
                             source.message?.let {
-                                Toast.makeText(this@ManageUsersActivity, "Saved locally: $it", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@ManageUsersActivity, it, Toast.LENGTH_SHORT).show()
                             }
                             renderAssigned()
                         }
@@ -1210,7 +1211,7 @@ open class ManageUsersActivity : AppCompatActivity() {
                                 val source = repository.removeStaffForMvp(selectedEvent, staff)
                                 assignedStaff.removeAll { it.id == staff.id && it.assignedEventId == staff.assignedEventId }
                                 source.message?.let {
-                                    Toast.makeText(this@ManageUsersActivity, "Removed locally: $it", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@ManageUsersActivity, it, Toast.LENGTH_SHORT).show()
                                 }
                                 renderAssigned()
                             }
@@ -1218,7 +1219,6 @@ open class ManageUsersActivity : AppCompatActivity() {
                         .show()
                 })
             }
-            addView(text("Validation states: user not found, duplicate assignment, unauthorized organizer, save/update failure.", 11, false, MUTED))
         }
 }
 
@@ -1226,6 +1226,7 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
     private lateinit var repository: OrganizerRepository
     private lateinit var selectedEvent: OrganizerMvpEvent
     private lateinit var summaryHost: LinearLayout
+    private lateinit var rulesHost: LinearLayout
     private lateinit var purposeHost: LinearLayout
     private val purposeInputs = mutableListOf<Pair<OrganizerMvpScanPurpose, LinearLayout>>()
 
@@ -1239,8 +1240,10 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
             addView(text("Configure which scan purposes are available for your event. Active scan purposes will be available to staff during QR scanning.", 14, false))
         })
         summaryHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        rulesHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         purposeHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         content.addView(summaryHost)
+        content.addView(rulesHost)
         content.addView(purposeHost)
         content.addView(section("Transaction Rules"))
         listOf(
@@ -1262,7 +1265,7 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
         content.addView(primaryButton("Save configuration") { validateAndSave() })
         content.addView(ghostButton("Reset / Cancel changes") { recreate() })
         content.addView(ghostButton("Configure points") {
-            Toast.makeText(this, "Configure points placeholder", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Points configuration is handled per scan purpose.", Toast.LENGTH_SHORT).show()
         })
         content.addView(stateCard())
         loadPurposes()
@@ -1280,19 +1283,38 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
         purposeHost.addView(loadingState("Loading scan purposes..."))
         MainScope().launch {
             val source = repository.loadScanPurposesForMvp(selectedEvent.id)
-            renderPurposes(source.data)
+            val rulesSource = repository.loadTransactionRulesForMvp(selectedEvent.id)
+            renderPurposes(source.data, rulesSource.data)
             source.message?.let {
                 Toast.makeText(this@ManageScanPurposesActivity, it, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun renderPurposes(purposes: List<OrganizerMvpScanPurpose>) {
+    private fun renderPurposes(purposes: List<OrganizerMvpScanPurpose>, rules: List<OrganizerTransactionRuleDto>) {
         summaryHost.removeAllViews()
+        rulesHost.removeAllViews()
         purposeHost.removeAllViews()
         summaryHost.addView(row().apply {
             addView(summaryCard("Active Purposes", purposes.count { it.enabled }.toString()))
             addView(summaryCard("With Points", purposes.count { it.pointsEnabled }.toString(), SUCCESS))
+        })
+        rulesHost.addView(card().apply {
+            addView(text("Transaction Rules", 16, true))
+            addView(text("Loaded from the backend for this event.", 12, false, MUTED))
+            addView(text("Configured rules: ${rules.size}", 13, true, PRIMARY))
+            if (rules.isEmpty()) {
+                addView(text("No transaction rules configured yet.", 12, false, MUTED))
+            } else {
+                rules.forEach { rule ->
+                    addView(text(
+                        "${rule.scanPurposeId} | active=${rule.active} | duplicate=${rule.allowDuplicate} | staff=${rule.requiresStaffAssignment} | points=${rule.pointsAwarded}",
+                        12,
+                        false,
+                        MUTED,
+                    ))
+                }
+            }
         })
         val header = row()
         header.addView(text("Available Purposes", 14, true, MUTED).apply {
@@ -1388,10 +1410,11 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
         }
         MainScope().launch {
             val source = repository.saveScanPurposesForMvp(selectedEvent.id, updated)
+            val rulesSource = repository.loadTransactionRulesForMvp(selectedEvent.id)
             source.message?.let {
-                Toast.makeText(this@ManageScanPurposesActivity, "Saved locally: $it", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ManageScanPurposesActivity, it, Toast.LENGTH_SHORT).show()
             } ?: Toast.makeText(this@ManageScanPurposesActivity, "Configuration saved", Toast.LENGTH_SHORT).show()
-            renderPurposes(source.data)
+            renderPurposes(source.data, rulesSource.data)
         }
     }
 }
@@ -1400,14 +1423,27 @@ open class AttendeeDetailsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val attendeeId = intent.getStringExtra("extra_attendee_id").orEmpty()
-        val attendee = OrganizerMvpPlaceholders.attendees.firstOrNull { it.id == attendeeId }
+        val eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
         val content = organizerShell("Attendee Details", showBack = true)
-        content.addView(card().apply {
-            addView(text(attendee?.name ?: "Attendee not selected", 18, true))
-            attendee?.let {
-                addView(text("${it.email}\n${it.phone}\nStatus: ${it.currentEventStatus}\nPoints: ${it.points}", 13, false, MUTED))
+        if (attendeeId.isBlank() || eventId.isBlank()) {
+            content.addView(emptyState("Open attendee details from an event to view live records."))
+            return
+        }
+        content.addView(loadingState("Loading attendee details..."))
+        MainScope().launch {
+            val attendeeLoad = OrganizerRepository(this@AttendeeDetailsActivity).loadAttendeesForMvp(eventId)
+            val attendee = attendeeLoad.data.firstOrNull { it.id == attendeeId }
+            content.removeAllViews()
+            attendeeLoad.message?.let { content.addView(errorState(it) { recreate() }) }
+            if (attendee == null) {
+                content.addView(emptyState("Attendee record not found for this event."))
+                return@launch
             }
-        })
+            content.addView(card().apply {
+                addView(text(attendee.name, 18, true))
+                addView(text("${attendee.email}\n${attendee.phone}\nStatus: ${attendee.currentEventStatus}\nPoints: ${attendee.points}", 13, false, MUTED))
+            })
+        }
     }
 }
 
@@ -1417,7 +1453,7 @@ open class ManageRewardsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         organizerShell("Reward Management", "Existing organizer reward page placeholder.", showBack = true)
-            .addView(emptyState(OrganizerMvpPlaceholders.TODO_BACKEND))
+            .addView(emptyState("Reward management is not configured for this event yet."))
     }
 }
 
@@ -1425,6 +1461,6 @@ open class NotificationManagementActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         organizerShell("Notifications", "Organizer notification placeholder.", showBack = true)
-            .addView(emptyState(OrganizerMvpPlaceholders.TODO_BACKEND))
+            .addView(emptyState("Notifications are not configured for this event yet."))
     }
 }

@@ -29,6 +29,7 @@ import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurpo
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerScanPurposeRequestDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerStaffDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionDto
+import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionRuleDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerUserSearchDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentRequestDto
 import com.thedavelopers.eventqr.features.organizer.model.dto.StaffAssignmentUpdateRequestDto
@@ -220,6 +221,40 @@ interface ApiService {
         @Path("purposeId") purposeId: String,
         @Body request: OrganizerScanPurposeRequestDto,
     ): ApiResponse<OrganizerScanPurposeDto>
+
+    @PATCH("organizer/events/{eventId}/scan-purposes/{purposeId}/enable")
+    suspend fun enableOrganizerScanPurpose(
+        @Path("eventId") eventId: String,
+        @Path("purposeId") purposeId: String,
+    ): ApiResponse<OrganizerScanPurposeDto>
+
+    @PATCH("organizer/events/{eventId}/scan-purposes/{purposeId}/disable")
+    suspend fun disableOrganizerScanPurpose(
+        @Path("eventId") eventId: String,
+        @Path("purposeId") purposeId: String,
+    ): ApiResponse<OrganizerScanPurposeDto>
+
+    @PATCH("organizer/events/{eventId}/scan-purposes/{purposeId}/tracking-only")
+    suspend fun updateOrganizerScanPurposeTrackingOnly(
+        @Path("eventId") eventId: String,
+        @Path("purposeId") purposeId: String,
+        @Query("trackingOnly") trackingOnly: Boolean,
+    ): ApiResponse<OrganizerScanPurposeDto>
+
+    @DELETE("organizer/events/{eventId}/scan-purposes/{purposeId}")
+    suspend fun deleteOrganizerScanPurpose(
+        @Path("eventId") eventId: String,
+        @Path("purposeId") purposeId: String,
+    ): ApiResponse<Unit>
+
+    @GET("organizer/events/{eventId}/transaction-rules")
+    suspend fun getOrganizerTransactionRules(@Path("eventId") eventId: String): ApiResponse<List<OrganizerTransactionRuleDto>>
+
+    @PUT("organizer/events/{eventId}/transaction-rules")
+    suspend fun saveOrganizerTransactionRule(
+        @Path("eventId") eventId: String,
+        @Body request: com.thedavelopers.eventqr.features.organizer.model.dto.TransactionRuleRequest,
+    ): ApiResponse<OrganizerTransactionRuleDto>
 
     @GET("registrations/me")
     suspend fun getMyRegistrations(): ApiResponse<List<RegistrationResponse>>
