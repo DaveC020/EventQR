@@ -23,10 +23,6 @@ public class OrganizerReportController {
         this.reportService = reportService;
     }
 
-    @GetMapping("/summary")
-    public ResponseEntity<ApiResponse<EventReportSnapshot>> summary(@PathVariable UUID eventId) {
-        return ResponseEntity.ok(ApiResponse.success(reportService.generate(eventId)));
-    }
 
     @GetMapping("/attendance")
     public ResponseEntity<ApiResponse<EventReportSnapshot>> attendance(@PathVariable UUID eventId) {
