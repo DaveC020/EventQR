@@ -36,10 +36,14 @@ class ScannerPresenter(
     }
 
     fun loadPurposes(eventId: String) {
+        android.util.Log.d("StaffScanner", "Loading scan purposes for eventId: $eventId")
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.getScanPurposesByEvent(eventId)) {
-                is NetworkResult.Success -> view?.showPurposes(result.data)
+                is NetworkResult.Success -> {
+                    android.util.Log.d("StaffScanner", "Loaded ${result.data.size} purposes for eventId: $eventId")
+                    view?.showPurposes(result.data)
+                }
                 is NetworkResult.Error -> view?.showMessage(result.message)
                 NetworkResult.Loading -> Unit
             }

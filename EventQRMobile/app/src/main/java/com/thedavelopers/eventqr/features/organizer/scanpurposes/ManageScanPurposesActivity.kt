@@ -4,209 +4,235 @@ import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.features.organizer.*
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerTransactionRuleDto
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 open class ManageScanPurposesActivity : AppCompatActivity() {
+    private val TAG = "ManageScanPurposesActivity"
     private lateinit var repository: OrganizerRepository
     private lateinit var selectedEvent: OrganizerMvpEvent
-    private lateinit var summaryHost: LinearLayout
-    private lateinit var rulesHost: LinearLayout
     private lateinit var purposeHost: LinearLayout
-    private val purposeInputs = mutableListOf<Pair<OrganizerMvpScanPurpose, LinearLayout>>()
+    private var refreshCount: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = OrganizerRepository(this)
         val eventId = intentEventId() ?: return showMissingEventScreen("Scan Purposes")
         selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents(), eventId) ?: return showMissingEventScreen("Scan Purposes")
-        val content = organizerShell("Scan Purposes", selectedEvent.title, showBack = true)
-        content.addView(card().apply {
-            background = rounded(Color.parseColor("#E5E7EB"), 12, Color.parseColor("#C7CAD1"), density = resources.displayMetrics.density)
-            addView(text("Configure which scan purposes are available for your event. Active scan purposes will be available to staff during QR scanning.", 14, false))
-        })
-        summaryHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        rulesHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        
+        Log.d(TAG, "Loading scan purposes for eventId: $eventId")
+        
+        val content = organizerShell(
+            title = "Scan Purposes",
+            showBack = true,
+            topRightLabel = "+ Add",
+            onTopRight = { showAddEditDialog() }
+        )
+        
         purposeHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        content.addView(summaryHost)
-        content.addView(rulesHost)
         content.addView(purposeHost)
-        content.addView(section("Transaction Rules"))
-        listOf(
-            "Prevent duplicate entry",
-            "Prevent duplicate attendance if configured",
-            "Prevent duplicate benefit claim",
-            "Prevent duplicate reward claim",
-            "Reject wrong event QR",
-            "Reject inactive/invalid registration",
-            "Reject unauthorized staff scan",
-            "Tracking-only purposes log transactions without awarding points",
-            "Point-enabled purposes award event-specific points after valid scans",
-        ).forEach {
-            content.addView(CheckBox(this).apply { text = it; isChecked = true })
-        }
-        content.addView(primaryButton("Add/Edit scan purpose rule") {
-            Toast.makeText(this, "Edit fields directly in each purpose card.", Toast.LENGTH_SHORT).show()
-        })
-        content.addView(primaryButton("Save configuration") { validateAndSave() })
-        content.addView(ghostButton("Reset / Cancel changes") { recreate() })
-        content.addView(ghostButton("Configure points") {
-            Toast.makeText(this, "Points configuration is handled per scan purpose.", Toast.LENGTH_SHORT).show()
-        })
-        content.addView(stateCard())
+        
         loadPurposes()
     }
 
     private fun loadPurposes() {
-        summaryHost.removeAllViews()
+        refreshCount += 1
         purposeHost.removeAllViews()
-        purposeInputs.clear()
         purposeHost.addView(loadingState("Loading scan purposes..."))
         MainScope().launch {
             val source = repository.loadScanPurposesForMvp(selectedEvent.id)
-            val rulesSource = repository.loadTransactionRulesForMvp(selectedEvent.id)
-            renderPurposes(source.data, rulesSource.data)
+            Log.d(
+                TAG,
+                "eventId=${selectedEvent.id} refreshCount=$refreshCount loadedCount=${source.data.size} source=${source.source} message=${source.message}"
+            )
+            renderPurposes(source.data)
             source.message?.let {
                 Toast.makeText(this@ManageScanPurposesActivity, it, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun renderPurposes(purposes: List<OrganizerMvpScanPurpose>, rules: List<OrganizerTransactionRuleDto>) {
-        summaryHost.removeAllViews()
-        rulesHost.removeAllViews()
+    private fun renderPurposes(purposes: List<OrganizerMvpScanPurpose>) {
         purposeHost.removeAllViews()
-        summaryHost.addView(row().apply {
-            addView(summaryCard("Active Purposes", purposes.count { it.enabled }.toString()))
-            addView(summaryCard("With Points", purposes.count { it.pointsEnabled }.toString(), SUCCESS))
-        })
         if (purposes.isEmpty()) {
-            purposeHost.addView(emptyState("No scan purposes configured yet."))
-        }
-        rulesHost.addView(card().apply {
-            addView(text("Transaction Rules", 16, true))
-            addView(text("Loaded from the backend for this event.", 12, false, MUTED))
-            addView(text("Configured rules: ${rules.size}", 13, true, PRIMARY))
-            if (rules.isEmpty()) {
-                addView(text("No transaction rules configured yet.", 12, false, MUTED))
-            } else {
-                rules.forEach { rule ->
-                    addView(text(
-                        "${rule.scanPurposeId} | active=${rule.active} | duplicate=${rule.allowDuplicate} | staff=${rule.requiresStaffAssignment} | points=${rule.pointsAwarded}",
-                        12,
-                        false,
-                        MUTED,
-                    ))
-                }
-            }
-        })
-        val header = row()
-        header.addView(text("Available Purposes", 14, true, MUTED).apply {
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        header.addView(text("Configure Points", 14, true, PRIMARY))
-        purposeHost.addView(header)
-        purposes.forEach { purpose ->
-            val view = purposeCard(purpose)
-            purposeInputs.add(purpose to view)
-            purposeHost.addView(view)
-        }
-    }
-
-    private fun purposeCard(purpose: OrganizerMvpScanPurpose): LinearLayout =
-        card().apply {
-            val top = row()
-            top.addView(text(purpose.label, 16, true).apply {
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            })
-            top.addView(CheckBox(this@ManageScanPurposesActivity).apply {
-                text = if (purpose.enabled) "Enabled" else "Disabled"
-                isChecked = purpose.enabled
-                setOnCheckedChangeListener { button, checked ->
-                    button.text = if (checked) "Enabled" else "Disabled"
-                }
-            })
-            addView(top)
-            addView(text(purpose.description, 12, false, MUTED))
-            addView(CheckBox(this@ManageScanPurposesActivity).apply {
-                text = "Tracking only"
-                isChecked = purpose.trackingOnly
-            })
-            addView(CheckBox(this@ManageScanPurposesActivity).apply {
-                text = "Points enabled"
-                isChecked = purpose.pointsEnabled
-            })
-            addView(EditText(this@ManageScanPurposesActivity).apply {
-                hint = "Points value"
-                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
-                setText(purpose.pointsValue.toString())
-                background = rounded(Color.WHITE, 8, BORDER, density = resources.displayMetrics.density)
-                setPadding(dp(10), 0, dp(10), 0)
-            })
-            addView(EditText(this@ManageScanPurposesActivity).apply {
-                hint = "Duplicate rule"
-                setText(purpose.duplicateRule)
-                background = rounded(Color.WHITE, 8, BORDER, density = resources.displayMetrics.density)
-                setPadding(dp(10), 0, dp(10), 0)
-            })
-            addView(EditText(this@ManageScanPurposesActivity).apply {
-                hint = "Required selection label"
-                setText(purpose.requiredSelectionLabel)
-                background = rounded(Color.WHITE, 8, BORDER, density = resources.displayMetrics.density)
-                setPadding(dp(10), 0, dp(10), 0)
-            })
-            addView(text("Badges: ${if (purpose.trackingOnly) "Tracking Only" else "Transactions"}${if (purpose.pointsEnabled) " | Points Enabled (${purpose.pointsValue})" else ""}", 12, false, MUTED))
-        }
-
-    private fun validateAndSave() {
-        val errors = mutableListOf<String>()
-        val updated = mutableListOf<OrganizerMvpScanPurpose>()
-        purposeInputs.forEach { (purpose, view) ->
-            val enabled = (((view.getChildAt(0) as LinearLayout).getChildAt(1)) as CheckBox).isChecked
-            val trackingOnly = (view.getChildAt(2) as CheckBox).isChecked
-            val pointsEnabled = (view.getChildAt(3) as CheckBox).isChecked
-            val points = (view.getChildAt(4) as EditText).text.toString().toIntOrNull()
-            val duplicateRule = (view.getChildAt(5) as EditText).text.toString()
-            val requiredSelection = (view.getChildAt(6) as EditText).text.toString()
-            if (points == null || points < 0) errors.add("${purpose.label}: invalid point value")
-            if (trackingOnly && pointsEnabled) errors.add("${purpose.label}: conflicting tracking-only and points rules")
-            updated.add(
-                purpose.copy(
-                    enabled = enabled,
-                    trackingOnly = trackingOnly,
-                    pointsEnabled = pointsEnabled,
-                    pointsValue = points ?: 0,
-                    duplicateRule = duplicateRule,
-                    requiredSelectionLabel = requiredSelection,
-                )
-            )
-        }
-        if (purposeInputs.none { it.first.label == "Entrance Logging" || it.first.label == "Entry" }) {
-            errors.add("Missing required scan purpose: Entrance Logging / Entry")
-        }
-        if (errors.isNotEmpty()) {
-            AlertDialog.Builder(this)
-                .setTitle("Validation errors")
-                .setMessage(errors.joinToString("\n"))
-                .setPositiveButton("OK", null)
-                .show()
+            purposeHost.addView(emptyState("No scan purposes configured yet. Use '+ Add' to create one."))
             return
         }
+        
+        purposes.forEach { purpose ->
+            val subtitle = buildString {
+                if (purpose.pointsEnabled) append("+${purpose.pointsValue} pts · ")
+                append(if (purpose.duplicateRule.lowercase().contains("allow")) "Allows duplicates" else "No duplicates")
+            }
+            
+            purposeHost.addView(purposeCard(
+                title = purpose.label,
+                subtitle = subtitle,
+                enabled = purpose.enabled,
+                onToggle = { isChecked ->
+                    togglePurpose(purpose, isChecked)
+                }
+            ).apply {
+                setOnClickListener { showAddEditDialog(purpose) }
+            })
+        }
+    }
+
+    private fun togglePurpose(purpose: OrganizerMvpScanPurpose, enabled: Boolean) {
         MainScope().launch {
-            val source = repository.saveScanPurposesForMvp(selectedEvent.id, updated)
-            val rulesSource = repository.loadTransactionRulesForMvp(selectedEvent.id)
-            source.message?.let {
-                Toast.makeText(this@ManageScanPurposesActivity, it, Toast.LENGTH_SHORT).show()
-            } ?: Toast.makeText(this@ManageScanPurposesActivity, "Configuration saved", Toast.LENGTH_SHORT).show()
-            renderPurposes(source.data, rulesSource.data)
+            Log.d(
+                TAG,
+                "eventId=${selectedEvent.id} purposeId=${purpose.id ?: "null"} label=${purpose.label} toggleValue=$enabled"
+            )
+
+            if (purpose.id.isNullOrBlank()) {
+                val createResult = repository.saveScanPurposesForMvp(
+                    selectedEvent.id,
+                    listOf(purpose.copy(enabled = enabled))
+                )
+                Log.d(
+                    TAG,
+                    "eventId=${selectedEvent.id} purposeId=${purpose.id ?: "null"} toggleCreateResultSource=${createResult.source} message=${createResult.message} returnedCount=${createResult.data.size}"
+                )
+                if (createResult.source != OrganizerMvpDataSource.BACKEND) {
+                    Toast.makeText(
+                        this@ManageScanPurposesActivity,
+                        "Failed to update: ${createResult.message ?: "Unable to save scan purpose"}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    loadPurposes()
+                    return@launch
+                }
+                Toast.makeText(
+                    this@ManageScanPurposesActivity,
+                    "${purpose.label} ${if (enabled) "enabled" else "disabled"}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                loadPurposes()
+                return@launch
+            }
+
+            val result = repository.enableScanPurposeForMvp(selectedEvent.id, purpose.id, enabled)
+            when (result) {
+                is NetworkResult.Success -> {
+                    Log.d(
+                        TAG,
+                        "eventId=${selectedEvent.id} purposeId=${purpose.id} toggleApiResult=SUCCESS active=${result.data.enabled}"
+                    )
+                    Toast.makeText(
+                        this@ManageScanPurposesActivity,
+                        "${purpose.label} ${if (enabled) "enabled" else "disabled"}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    loadPurposes()
+                }
+                is NetworkResult.Error -> {
+                    Log.w(
+                        TAG,
+                        "eventId=${selectedEvent.id} purposeId=${purpose.id} toggleApiResult=ERROR message=${result.message}"
+                    )
+                    Toast.makeText(
+                        this@ManageScanPurposesActivity,
+                        "Failed to update: ${result.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    loadPurposes()
+                }
+                NetworkResult.Loading -> {
+                    Log.d(
+                        TAG,
+                        "eventId=${selectedEvent.id} purposeId=${purpose.id} toggleApiResult=LOADING"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun showAddEditDialog(purpose: OrganizerMvpScanPurpose? = null) {
+        val isEdit = purpose != null
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+        }
+
+        val nameInput = EditText(this).apply {
+            hint = "Purpose Name (e.g. Session Attendance)"
+            setText(purpose?.label ?: "")
+        }
+        val descInput = EditText(this).apply {
+            hint = "Description"
+            setText(purpose?.description ?: "")
+        }
+        val pointsInput = EditText(this).apply {
+            hint = "Points awarded"
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(purpose?.pointsValue?.toString() ?: "0")
+        }
+        val duplicateCheck = CheckBox(this).apply {
+            text = "Allow duplicate scans"
+            isChecked = purpose?.duplicateRule?.lowercase()?.contains("allow") ?: false
+        }
+        val trackingOnlyCheck = CheckBox(this).apply {
+            text = "Tracking only (no points)"
+            isChecked = purpose?.trackingOnly ?: false
+        }
+
+        dialogView.addView(text("Name", 14, true))
+        dialogView.addView(nameInput)
+        dialogView.addView(text("Description", 14, true).apply { setPadding(0, dp(12), 0, 0) })
+        dialogView.addView(descInput)
+        dialogView.addView(text("Points", 14, true).apply { setPadding(0, dp(12), 0, 0) })
+        dialogView.addView(pointsInput)
+        dialogView.addView(duplicateCheck)
+        dialogView.addView(trackingOnlyCheck)
+
+        AlertDialog.Builder(this)
+            .setTitle(if (isEdit) "Edit Scan Purpose" else "Add Scan Purpose")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val newPurpose = (purpose ?: OrganizerMvpScanPurpose(
+                    label = "",
+                    description = "",
+                    enabled = true,
+                    duplicateRule = "",
+                    trackingOnly = false,
+                    pointsEnabled = true,
+                    pointsValue = 0,
+                    requiredSelectionLabel = ""
+                )).copy(
+                    label = nameInput.text.toString(),
+                    description = descInput.text.toString(),
+                    pointsValue = pointsInput.text.toString().toIntOrNull() ?: 0,
+                    pointsEnabled = !trackingOnlyCheck.isChecked,
+                    trackingOnly = trackingOnlyCheck.isChecked,
+                    duplicateRule = if (duplicateCheck.isChecked) "Allow Duplicates" else "No Duplicates"
+                )
+                savePurpose(newPurpose)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun savePurpose(purpose: OrganizerMvpScanPurpose) {
+        MainScope().launch {
+            val source = repository.saveScanPurposesForMvp(selectedEvent.id, listOf(purpose))
+            Log.d(TAG, "Save purpose ${purpose.label} result: ${source.source}")
+            if (source.source == OrganizerMvpDataSource.BACKEND) {
+                Toast.makeText(this@ManageScanPurposesActivity, "Saved successfully", Toast.LENGTH_SHORT).show()
+                loadPurposes()
+            } else {
+                Toast.makeText(this@ManageScanPurposesActivity, "Failed to save: ${source.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -134,6 +136,13 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         eventOptions.addAll(items)
         val labels = items.map { it.label }
         eventSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        eventSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                loadSelectedPurposes()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
         if (!preselectedEventId.isNullOrBlank()) {
             val index = items.indexOfFirst { it.id == preselectedEventId }
             if (index >= 0) eventSpinner.setSelection(index)
@@ -141,10 +150,27 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         loadSelectedPurposes()
     }
 
+    private val TAG = "StaffScanner"
+
     override fun showPurposes(items: List<ScanPurposeResponse>) {
+        val activePurposes = items.filter { it.active }
+        val selectedEventId = eventOptions.getOrNull(eventSpinner.selectedItemPosition)?.id
+        val labels = activePurposes.map { it.name }
+        Log.d(
+            TAG,
+            "eventId=$selectedEventId loadedScanPurposeCount=${items.size} displayedOptionLabels=$labels"
+        )
+        
         purposeOptions.clear()
-        purposeOptions.addAll(items)
-        purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items.map { it.name })
+        purposeOptions.addAll(activePurposes)
+        
+        if (activePurposes.isEmpty()) {
+            purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("No scan purposes enabled for this event."))
+            purposeSpinner.isEnabled = false
+        } else {
+            purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, activePurposes.map { it.name })
+            purposeSpinner.isEnabled = true
+        }
     }
 
     override fun appendScanResult(result: TransactionResponse) {

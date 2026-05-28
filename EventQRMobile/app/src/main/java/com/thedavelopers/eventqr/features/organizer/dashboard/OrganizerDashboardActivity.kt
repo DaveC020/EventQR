@@ -1,5 +1,6 @@
 package com.thedavelopers.eventqr.features.organizer.dashboard
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
@@ -74,6 +75,13 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.btnDashboardRetry).setOnClickListener {
             loadDashboard()
+        }
+        findViewById<View>(R.id.btnLogoutTest).setOnClickListener {
+            sessionManager.clearSession()
+            val intent = Intent(this, com.thedavelopers.eventqr.features.auth.login.LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
         }
     }
 

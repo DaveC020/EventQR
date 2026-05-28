@@ -112,6 +112,7 @@ internal fun AppCompatActivity.primaryButton(label: String, onClick: () -> Unit)
         setAllCaps(false)
         setTextColor(Color.WHITE)
         background = rounded(PURPLE, 8, null, density = resources.displayMetrics.density)
+        setPadding(dp(16), 0, dp(16), 0)
         setOnClickListener { onClick() }
     }
 
@@ -149,22 +150,15 @@ internal fun AppCompatActivity.badge(value: String): TextView {
 }
 
 internal fun AppCompatActivity.summaryCard(title: String, value: String, accent: Int = PRIMARY): LinearLayout =
-    card(14).apply {
+    card(12).apply {
         gravity = Gravity.CENTER
         layoutParams = LinearLayout.LayoutParams(
             0,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             1f,
         ).apply { setMargins(dp(4), dp(6), dp(4), dp(6)) }
-        addView(text(value, 24, true, TEXT).apply { gravity = Gravity.CENTER })
-        addView(text(title, 12, false, MUTED).apply { gravity = Gravity.CENTER })
-        addView(View(this@summaryCard).apply {
-            background = rounded(accent, 2, null, density = resources.displayMetrics.density)
-            layoutParams = LinearLayout.LayoutParams(dp(28), dp(3)).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                setMargins(0, dp(8), 0, 0)
-            }
-        })
+        addView(text(value, 20, true, TEXT).apply { gravity = Gravity.CENTER })
+        addView(text(title, 11, false, MUTED).apply { gravity = Gravity.CENTER })
     }
 
 internal fun EditText.afterTextChanged(onChanged: () -> Unit) {
@@ -239,6 +233,109 @@ internal fun AppCompatActivity.showMissingEventScreen(screenTitle: String) {
         })
 }
 
+internal fun AppCompatActivity.menuCard(
+    label: String,
+    iconRes: Int,
+    iconTint: Int = PURPLE,
+    iconBg: Int = Color.parseColor("#EEF0FF"),
+    onClick: () -> Unit,
+): LinearLayout = card(12).apply {
+    setOnClickListener { onClick() }
+    val content = row()
+    content.addView(ImageView(this@menuCard).apply {
+        layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
+        background = rounded(iconBg, 10, null, density = resources.displayMetrics.density)
+        setPadding(dp(10), dp(10), dp(10), dp(10))
+        setImageResource(iconRes)
+        setColorFilter(iconTint)
+    })
+    content.addView(text(label, 16, true).apply {
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(dp(16), 0, dp(8), 0)
+        }
+    })
+    content.addView(ImageView(this@menuCard).apply {
+        layoutParams = LinearLayout.LayoutParams(dp(20), dp(20))
+        setImageResource(com.thedavelopers.eventqr.R.drawable.ic_chevron_right)
+        setColorFilter(MUTED)
+    })
+    addView(content)
+}
+
+internal fun AppCompatActivity.purposeCard(
+    title: String,
+    subtitle: String,
+    iconRes: Int = com.thedavelopers.eventqr.R.drawable.ic_qr_scan,
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+): LinearLayout = card(12).apply {
+    val content = row()
+    content.addView(ImageView(this@purposeCard).apply {
+        layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+        background = rounded(Color.parseColor("#EEF0FF"), 10, null, density = resources.displayMetrics.density)
+        setPadding(dp(11), dp(11), dp(11), dp(11))
+        setImageResource(iconRes)
+        setColorFilter(PURPLE)
+    })
+    val middle = LinearLayout(this@purposeCard).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(dp(16), 0, dp(8), 0)
+        }
+    }
+    middle.addView(text(title, 16, true))
+    middle.addView(text(subtitle, 13, false, MUTED))
+    content.addView(middle)
+    
+    val switch = androidx.appcompat.widget.SwitchCompat(this@purposeCard).apply {
+        isChecked = enabled
+        setOnCheckedChangeListener { _, checked -> onToggle(checked) }
+    }
+    content.addView(switch)
+    addView(content)
+}
+
+internal fun AppCompatActivity.ruleToggle(
+    title: String,
+    description: String,
+    isChecked: Boolean,
+    onToggle: (Boolean) -> Unit,
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+    val top = row()
+    top.addView(LinearLayout(this@ruleToggle).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        addView(text(title, 15, true))
+        addView(text(description, 13, false, MUTED))
+    })
+    top.addView(androidx.appcompat.widget.SwitchCompat(this@ruleToggle).apply {
+        this.isChecked = isChecked
+        setOnCheckedChangeListener { _, checked -> onToggle(checked) }
+    })
+    addView(top)
+    setPadding(0, dp(10), 0, dp(10))
+}
+
+internal fun AppCompatActivity.labeledInput(
+    label: String,
+    value: String,
+    hint: String? = null,
+    inputType: Int = android.text.InputType.TYPE_CLASS_TEXT,
+    onChanged: (String) -> Unit,
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+    addView(text(label, 14, true).apply { setPadding(0, dp(12), 0, dp(6)) })
+    addView(EditText(this@labeledInput).apply {
+        this.inputType = inputType
+        this.hint = hint
+        setText(value)
+        background = rounded(Color.parseColor("#F9FAFB"), 10, BORDER, density = resources.displayMetrics.density)
+        setPadding(dp(16), dp(14), dp(16), dp(14))
+        afterTextChanged { onChanged(text.toString()) }
+    })
+}
+
 internal fun AppCompatActivity.organizerShell(
     title: String,
     subtitle: String? = null,
@@ -254,10 +351,11 @@ internal fun AppCompatActivity.organizerShell(
     }
     setContentView(root)
 
+    val headerColor = if (darkHeader) PURPLE else Color.WHITE
     val header = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(18), dp(16), dp(if (darkHeader) 22 else 12))
-        setBackgroundColor(if (darkHeader) PRIMARY else Color.WHITE)
+        setBackgroundColor(headerColor)
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -265,26 +363,52 @@ internal fun AppCompatActivity.organizerShell(
     }
     val headerRow = row()
     if (showBack) {
-        headerRow.addView(text("<", 26, false, if (darkHeader) Color.WHITE else TEXT).apply {
+        val backIcon = text("←", 24, false, if (darkHeader) Color.WHITE else TEXT).apply {
             gravity = Gravity.CENTER
             setOnClickListener { finish() }
-            layoutParams = LinearLayout.LayoutParams(dp(34), dp(42))
-        })
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+            background = rounded(if (darkHeader) Color.parseColor("#33FFFFFF") else Color.parseColor("#F3F4F6"), 20, null, density = resources.displayMetrics.density)
+        }
+        headerRow.addView(backIcon)
+        headerRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(12), 1) })
     }
     val titleBox = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
     }
-    titleBox.addView(text(title, 21, true, if (darkHeader) Color.WHITE else TEXT))
+    titleBox.addView(text(title, 20, true, if (darkHeader) Color.WHITE else TEXT))
     subtitle?.takeIf { it.isNotBlank() }?.let {
         titleBox.addView(text(it, 13, false, if (darkHeader) Color.parseColor("#D7D4F8") else MUTED))
     }
     headerRow.addView(titleBox)
-    if (topRightLabel != null) {
-        headerRow.addView(ghostButton(topRightLabel) { onTopRight?.invoke() }.apply {
-            minWidth = dp(44)
-            minHeight = dp(36)
+
+    if (darkHeader) {
+        headerRow.addView(text("Logout", 11, true, Color.WHITE).apply {
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = rounded(Color.parseColor("#33FFFFFF"), 8, null, density = resources.displayMetrics.density)
+            setOnClickListener {
+                com.thedavelopers.eventqr.core.session.SessionManager(this@organizerShell).clearSession()
+                val intent = Intent(this@organizerShell, com.thedavelopers.eventqr.features.auth.login.LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
         })
+        headerRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+    }
+
+    if (topRightLabel != null) {
+        val topBtn = Button(this).apply {
+            text = topRightLabel
+            setAllCaps(false)
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            background = rounded(if (darkHeader) Color.parseColor("#33FFFFFF") else PURPLE, 10, null, density = resources.displayMetrics.density)
+            setOnClickListener { onTopRight?.invoke() }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38))
+            setPadding(dp(12), 0, dp(12), 0)
+        }
+        headerRow.addView(topBtn)
     }
     header.addView(headerRow)
     root.addView(header)
