@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +52,8 @@ import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 public class OrganizerService {
 
     private static final List<String> DEFAULT_PERMISSIONS = List.of("Scan QR", "View attendee details");
+    private static final String DEFAULT_ROLE_LABEL = "Scanner";
+    private static final String DEFAULT_STAFF_ROLE = "SCANNER";
     private static final Logger log = LoggerFactory.getLogger(OrganizerService.class);
 
     private final EventRepository eventRepository;
@@ -316,14 +319,25 @@ public class OrganizerService {
             return created;
         });
 
-        assignment.setRoleLabel(blankToDefault(request.roleLabel(), "SCANNER"));
+        String roleLabel = normalizeRoleLabel(request.roleLabel());
+        assignment.setRoleLabel(roleLabel);
+        assignment.setStaffRole(toStaffRole(roleLabel));
         assignment.setPermissions(String.join(",", emptyToDefault(request.permissions(), DEFAULT_PERMISSIONS)));
         assignment.setCanScan(boolOrDefault(request.canScan(), true));
         assignment.setCanPrintId(boolOrDefault(request.canPrintId(), false));
         assignment.setCanViewLogs(boolOrDefault(request.canViewLogs(), false));
         assignment.setCanManageRewards(boolOrDefault(request.canManageRewards(), false));
         applyPermissionOverrides(assignment, request.permissions());
+        if (assignment.getAddedAt() == null) {
+            assignment.setAddedAt(Instant.now());
+        }
         assignment.setActive(true);
+        log.debug("Organizer staff add normalized eventId={} staffUserId={} roleLabel={} staffRole={} permissions={}",
+                eventId,
+                staffUser.getId(),
+                assignment.getRoleLabel(),
+                assignment.getStaffRole(),
+                assignment.getPermissions());
         EventStaffAssignment saved = staffAssignmentRepository.save(assignment);
         log.debug("Organizer staff add persisted eventId={} staffUserId={} assignmentId={} active={} reactivated={}",
                 eventId,
@@ -352,7 +366,9 @@ public class OrganizerService {
             assignment.setActive(request.active());
         }
         if (request.roleLabel() != null && !request.roleLabel().isBlank()) {
-            assignment.setRoleLabel(request.roleLabel().trim());
+            String roleLabel = normalizeRoleLabel(request.roleLabel());
+            assignment.setRoleLabel(roleLabel);
+            assignment.setStaffRole(toStaffRole(roleLabel));
         }
         if (request.canScan() != null) {
             assignment.setCanScan(request.canScan());
@@ -645,7 +661,7 @@ public class OrganizerService {
         UserProfile user = userProfileRepository.findById(assignment.getStaffUserId()).orElse(null);
         return new OrganizerStaffResponse(assignment.getId(), assignment.getEventId(), assignment.getStaffUserId(),
                 user == null ? "Unknown staff" : user.getFullName(), user == null ? "" : user.getEmail(),
-                assignment.getRoleLabel(), assignment.isActive(), assignment.isCanScan(), assignment.isCanPrintId(),
+                resolveRoleLabel(assignment), assignment.isActive(), assignment.isCanScan(), assignment.isCanPrintId(),
                 assignment.isCanViewLogs(), assignment.isCanManageRewards(), splitPermissions(assignment.getPermissions()),
                 assignment.getAddedAt());
     }
@@ -738,6 +754,51 @@ public class OrganizerService {
 
     private boolean boolOrDefault(Boolean value, boolean fallback) {
         return value == null ? fallback : value;
+    }
+
+    private String normalizeRoleLabel(String value) {
+        String normalized = blankToDefault(value, DEFAULT_ROLE_LABEL);
+        if (normalized.equalsIgnoreCase(DEFAULT_STAFF_ROLE)) {
+            return DEFAULT_ROLE_LABEL;
+        }
+        return normalized;
+    }
+
+    private String toStaffRole(String roleLabel) {
+        String normalized = blankToDefault(roleLabel, DEFAULT_ROLE_LABEL);
+        if (normalized.equalsIgnoreCase(DEFAULT_ROLE_LABEL) || normalized.equalsIgnoreCase(DEFAULT_STAFF_ROLE)) {
+            return DEFAULT_STAFF_ROLE;
+        }
+        return normalized.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
+    }
+
+    private String resolveRoleLabel(EventStaffAssignment assignment) {
+        String roleLabel = assignment.getRoleLabel();
+        if (roleLabel != null && !roleLabel.isBlank()) {
+            if (roleLabel.equalsIgnoreCase(DEFAULT_STAFF_ROLE)) {
+                return DEFAULT_ROLE_LABEL;
+            }
+            return roleLabel.trim();
+        }
+        String staffRole = assignment.getStaffRole();
+        if (staffRole == null || staffRole.isBlank()) {
+            return DEFAULT_ROLE_LABEL;
+        }
+        String[] tokens = staffRole.toLowerCase(Locale.ROOT).replace('_', ' ').split(" ");
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            if (token.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(token.charAt(0)));
+            if (token.length() > 1) {
+                builder.append(token.substring(1));
+            }
+        }
+        return builder.length() == 0 ? DEFAULT_ROLE_LABEL : builder.toString();
     }
 
     private void applyPermissionOverrides(EventStaffAssignment assignment, List<String> permissions) {

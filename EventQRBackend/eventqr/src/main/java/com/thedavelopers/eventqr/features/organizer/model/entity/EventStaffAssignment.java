@@ -7,6 +7,8 @@ import com.thedavelopers.eventqr.shared.utils.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -25,8 +27,11 @@ public class EventStaffAssignment extends BaseEntity {
     @Column(name = "staff_user_id", nullable = false)
     private UUID staffUserId;
 
+    @Column(name = "role_label", nullable = false)
+    private String roleLabel = "Scanner";
+
     @Column(name = "staff_role", nullable = false)
-    private String roleLabel = "SCANNER";
+    private String staffRole = "SCANNER";
 
     @Column(nullable = false)
     private boolean active = true;
@@ -51,5 +56,22 @@ public class EventStaffAssignment extends BaseEntity {
 
     @Column(name = "added_at", nullable = false)
     private Instant addedAt = Instant.now();
+
+    @PrePersist
+    @PreUpdate
+    void ensureDefaults() {
+        if (roleLabel == null || roleLabel.isBlank()) {
+            roleLabel = "Scanner";
+        }
+        if (staffRole == null || staffRole.isBlank()) {
+            staffRole = "SCANNER";
+        }
+        if (permissions == null || permissions.isBlank()) {
+            permissions = "Scan QR,View attendee details";
+        }
+        if (addedAt == null) {
+            addedAt = Instant.now();
+        }
+    }
 }
 
