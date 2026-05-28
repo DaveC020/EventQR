@@ -10,7 +10,9 @@ import com.thedavelopers.eventqr.core.api.dto.RegistrationStatus
 import com.thedavelopers.eventqr.core.util.DateFormatters
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
 
-class RegistrationAdapter : RecyclerView.Adapter<RegistrationAdapter.ViewHolder>() {
+class RegistrationAdapter(
+    private val onClick: ((RegistrationResponse) -> Unit)? = null,
+) : RecyclerView.Adapter<RegistrationAdapter.ViewHolder>() {
 
     private val items = mutableListOf<RegistrationResponse>()
 
@@ -27,6 +29,9 @@ class RegistrationAdapter : RecyclerView.Adapter<RegistrationAdapter.ViewHolder>
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind(items[position])
+        holder.itemView.setOnClickListener {
+            onClick?.invoke(items[position])
+        }
     }
 
     override fun getItemCount(): Int = items.size

@@ -30,11 +30,36 @@
             android:paddingHorizontal="20dp"
             android:paddingBottom="20dp">
 
-            <!-- Hidden Event Spinner (required by Activity logic) -->
+            <!-- Assigned event selector -->
             <Spinner
                 android:id="@+id/spnScannerEvent"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height="48dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_spinner_with_arrow"
+                android:paddingStart="12dp"
+                android:paddingEnd="40dp" />
+
+            <TextView
+                android:id="@+id/txtScannerSelectedEvent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:textColor="#111827"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/txtScannerEmptyState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_gray_card"
+                android:padding="16dp"
+                android:text="No assigned events are available for this staff account."
+                android:textColor="#374151"
+                android:textSize="14sp"
                 android:visibility="gone" />
 
             <!-- Info Card -->
@@ -141,10 +166,45 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="24dp"
-                        android:text="Select scan purpose to enable camera"
+                        android:text="Manual QR entry is available. Camera scanning is not enabled in this build."
                         android:textAlignment="center"
                         android:textColor="#6B7280"
                         android:textSize="16sp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Manual QR Value *"
+                        android:textColor="#374151"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/edtScannerQr"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_soft_input_no_stroke"
+                        android:hint="Paste or type attendee QR value"
+                        android:inputType="text"
+                        android:paddingHorizontal="16dp"
+                        android:textSize="14sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -210,11 +270,24 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Other fields kept hidden for Activity compatibility -->
-            <EditText android:id="@+id/edtScannerQr" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" tools:ignore="MissingConstraints" />
-            <EditText android:id="@+id/edtScannerNotes" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" tools:ignore="MissingConstraints" />
-            <TextView android:id="@+id/txtScannerResult" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" tools:ignore="MissingConstraints" />
-            <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerScannerResults" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" tools:ignore="MissingConstraints" />
+            <EditText
+                android:id="@+id/edtScannerNotes"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"
+                tools:ignore="MissingConstraints" />
+            <TextView
+                android:id="@+id/txtScannerResult"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"
+                tools:ignore="MissingConstraints" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerScannerResults"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"
+                tools:ignore="MissingConstraints" />
 
         </LinearLayout>
     </ScrollView>

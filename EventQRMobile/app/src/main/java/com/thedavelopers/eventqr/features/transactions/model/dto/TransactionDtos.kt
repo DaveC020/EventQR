@@ -16,6 +16,7 @@ data class TransactionRequest(
 data class TransactionResponse(
     val transactionId: UUID,
     val eventId: UUID,
+    val eventTitle: String? = null,
     val attendeeUserId: UUID,
     val attendeeName: String? = null,
     val registrationId: UUID,

@@ -128,14 +128,24 @@ public class EventCreationRequestService {
     }
 
     private void validateDates(Instant start, Instant end, Instant registrationStart, Instant registrationEnd) {
+        Instant now = Instant.now();
+        if (start.isBefore(now)) {
+            throw new BadRequestException("Event start date/time cannot be in the past");
+        }
         if (!end.isAfter(start)) {
             throw new BadRequestException("End date/time must be after start date/time");
+        }
+        if (registrationStart != null && registrationStart.isBefore(now)) {
+            throw new BadRequestException("Registration start date/time cannot be in the past");
         }
         if (registrationStart != null && registrationEnd != null && !registrationEnd.isAfter(registrationStart)) {
             throw new BadRequestException("Registration end date/time must be after registration start date/time");
         }
-        if (registrationEnd != null && registrationEnd.isAfter(end)) {
-            throw new BadRequestException("Registration end date/time must not be after event end date/time");
+        if (registrationEnd != null && registrationEnd.isBefore(now)) {
+            throw new BadRequestException("Registration end date/time cannot be in the past");
+        }
+        if (registrationEnd != null && registrationEnd.isAfter(start)) {
+            throw new BadRequestException("Registration end date/time must not be after event start date/time");
         }
     }
 

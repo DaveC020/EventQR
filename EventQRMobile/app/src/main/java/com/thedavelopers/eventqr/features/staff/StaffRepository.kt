@@ -19,6 +19,8 @@ class StaffRepository(context: Context) {
 
     suspend fun getEvents() = safeApiCall { apiService.getStaffEvents() }
 
+    suspend fun getEventById(eventId: String) = safeApiCall { apiService.getStaffEventById(eventId) }
+
     suspend fun getScanPurposesByEvent(eventId: String) = safeApiCall { apiService.getStaffScanPurposes(eventId) }
 
     suspend fun verifyScan(request: TransactionRequest): NetworkResult<ScanVerificationResponse> = safeApiCall {
@@ -38,6 +40,16 @@ class StaffRepository(context: Context) {
     }
 
     suspend fun getTransactionsByEvent(eventId: String) = safeApiCall { apiService.getStaffTransactions(eventId) }
+
+    suspend fun getAttendeeByEvent(eventId: String, attendeeId: String) = safeApiCall {
+        apiService.getStaffAttendee(eventId, attendeeId)
+    }
+
+    suspend fun getRewardBalance(eventId: String, attendeeUserId: String) = safeApiCall {
+        apiService.getRewardBalance(eventId, attendeeUserId)
+    }
+
+    suspend fun getLatestScan(eventId: String) = safeApiCall { apiService.getLatestScan(eventId) }
 
     suspend fun printId(request: IdPrintRequest) = safeApiCall { apiService.printId(request) }
 

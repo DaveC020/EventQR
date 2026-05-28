@@ -441,19 +441,36 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             else -> {
                 // Default to Attendee / User
                 attendeeCard.text = "Browse Events"
-                staffCard.text = "My Events"
-                organizerCard.text = "Rewards"
+                staffCard.text = "My Registered Events"
+                organizerCard.text = "Transaction History"
                 notificationsCard.text = "Request Event"
-                rewardsCard.visibility = View.GONE
+                configureStandaloneAction(rewardsCard, "Rewards") {
+                    startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeRewardsActivity::class.java))
+                }
                 reportsCard.visibility = View.GONE
                 logoutCard.visibility = View.GONE
 
                 attendeeCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeEventsActivity::class.java)) }
                 staffCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.RegisteredEventsActivity::class.java)) }
-                organizerCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeRewardsActivity::class.java)) }
+                organizerCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeTransactionsActivity::class.java)) }
                 notificationsCard.setOnClickListener { startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.RequestEventActivity::class.java)) }
             }
         }
+    }
+
+    private fun configureStandaloneAction(button: Button, label: String, onClick: () -> Unit) {
+        button.visibility = View.VISIBLE
+        button.text = label
+        button.isAllCaps = false
+        button.setTextColor(0xFF000000.toInt())
+        button.setBackgroundResource(R.drawable.bg_quick_action_button)
+        button.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(84),
+        ).apply {
+            topMargin = dp(16)
+        }
+        button.setOnClickListener { onClick() }
     }
 
     private fun performLogout() {

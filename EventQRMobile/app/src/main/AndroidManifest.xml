@@ -37,6 +37,9 @@
         <activity android:name=".features.staff.IdPrintingActivity" android:exported="false" />
         <activity android:name=".features.staff.StaffTransactionsActivity" android:exported="false" />
         <activity android:name=".features.staff.ScannerActivity" android:exported="false" />
+        <activity android:name=".features.staff.StaffAttendeeDetailsActivity" android:exported="false" />
+        <activity android:name=".features.staff.StaffTransactionResultActivity" android:exported="false" />
+        <activity android:name=".features.staff.StaffScanResultActivity" android:exported="false" />
         <activity android:name=".features.staff.StaffDashboardActivity" android:exported="false" />
         <activity android:name=".features.staff.StaffProfileActivity" android:exported="false" />
         <activity android:name=".features.organizer.NotificationManagementActivity" android:exported="false" />

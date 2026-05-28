@@ -10,9 +10,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.dto.RegistrationStatus
 import com.thedavelopers.eventqr.core.util.DateFormatters
-import com.thedavelopers.eventqr.features.attendee.AttendeeTransactionsActivity
-import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_ID
-import com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_TITLE
+import com.thedavelopers.eventqr.features.attendee.AttendeeQrCredentialActivity
+import com.thedavelopers.eventqr.features.attendee.EXTRA_REGISTRATION_ID
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
 
 class RegisteredEventAdapter : RecyclerView.Adapter<RegisteredEventAdapter.ViewHolder>() {
@@ -69,14 +68,22 @@ class RegisteredEventAdapter : RecyclerView.Adapter<RegisteredEventAdapter.ViewH
 
             btnTransactions.setOnClickListener {
                 val context = itemView.context
-                val intent = Intent(context, AttendeeTransactionsActivity::class.java).apply {
-                    putExtra(EXTRA_EVENT_ID, registration.eventId.toString())
-                    putExtra(EXTRA_EVENT_TITLE, registration.eventTitle.orEmpty())
+                val intent = Intent(context, AttendeeQrCredentialActivity::class.java).apply {
+                    putExtra(EXTRA_REGISTRATION_ID, registration.registrationId.toString())
                 }
                 context.startActivity(intent)
             }
 
-            btnDetails.visibility = View.GONE
+            btnTransactions.text = "View QR"
+            btnDetails.visibility = View.VISIBLE
+            btnDetails.setOnClickListener {
+                val context = itemView.context
+                val intent = Intent(context, com.thedavelopers.eventqr.features.attendee.EventDetailActivity::class.java).apply {
+                    putExtra(com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_ID, registration.eventId.toString())
+                    putExtra(com.thedavelopers.eventqr.features.attendee.EXTRA_EVENT_TITLE, registration.eventTitle.orEmpty())
+                }
+                context.startActivity(intent)
+            }
         }
     }
 }

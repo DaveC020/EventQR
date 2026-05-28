@@ -49,8 +49,7 @@ class TransactionAdapter(private val eventTitle: String? = null) : RecyclerView.
             
             titleView.text = item.reason ?: (if (isEarned) "Points Earned" else "Points Redeemed")
             
-            // For staff dashboard, we might want to show attendee name instead of event title
-            eventView.text = eventTitle ?: "Attendee ID: ${item.attendeeUserId.toString().take(8)}"
+            eventView.text = item.eventTitle ?: eventTitle ?: "Attendee ID: ${item.attendeeUserId.toString().take(8)}"
             timeView.text = DateFormatters.formatInstant(item.scannedAt)
             
             val deltaPrefix = if (isEarned) "+" else ""

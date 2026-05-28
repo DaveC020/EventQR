@@ -227,6 +227,9 @@ interface ApiService {
     @GET("attendees/me/events/{eventId}/transactions")
     suspend fun getMyEventTransactions(@Path("eventId") eventId: String): ApiResponse<List<TransactionResponse>>
 
+    @GET("attendees/me/transactions")
+    suspend fun getMyTransactions(): ApiResponse<List<TransactionResponse>>
+
     @POST("events/{eventId}/registrations")
     suspend fun createRegistration(
         @Path("eventId") eventId: String,

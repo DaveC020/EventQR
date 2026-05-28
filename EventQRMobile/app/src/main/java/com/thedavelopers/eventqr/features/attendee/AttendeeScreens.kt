@@ -459,25 +459,34 @@ class RegistrationPresenter(
     }
 
     fun submit(eventId: String, fullName: String, email: String, phoneNumber: String) {
-        if (!Validators.isValidEmail(email)) {
+        val normalizedFullName = fullName.trim()
+        val normalizedEmail = email.trim()
+        val normalizedPhone = phoneNumber.trim()
+
+        if (!Validators.isNonEmpty(normalizedFullName)) {
+            view?.showFieldError("fullName", "Full name is required")
+            return
+        }
+        if (!Validators.isValidEmail(normalizedEmail)) {
             view?.showFieldError("email", "Enter a valid email address")
             return
         }
-        if (!Validators.isNonEmpty(fullName)) {
-            view?.showFieldError("fullName", "Full name is required")
+        if (!Validators.isValidPhoneNumber(normalizedPhone)) {
+            view?.showFieldError("phone", "Phone number must start with 63 and be 12 digits long")
             return
         }
         view?.showFieldError("email", null)
         view?.showFieldError("fullName", null)
+        view?.showFieldError("phone", null)
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
             val regResult = repository.createRegistration(
                 eventId,
                 RegistrationRequest(
                     eventId = UUID.fromString(eventId),
-                    email = email,
-                    fullName = fullName,
-                    phoneNumber = phoneNumber.ifBlank { null },
+                    email = normalizedEmail,
+                    fullName = normalizedFullName,
+                    phoneNumber = normalizedPhone.ifBlank { null },
                 )
             )
             
@@ -564,12 +573,38 @@ open class AttendeeRegistrationActivity : AppCompatActivity(), RegistrationContr
         emailInput.setText(intent.getStringExtra(EXTRA_PREFILL_EMAIL).orEmpty())
 
         submitButton.setOnClickListener {
+            val firstName = firstNameInput.text.toString().trim()
+            val lastName = lastNameInput.text.toString().trim()
+            val phoneNumber = phoneInput.text.toString().trim()
+
+            firstNameInput.error = null
+            lastNameInput.error = null
+            emailInput.error = null
+            phoneInput.error = null
+
+            var valid = true
+            if (!Validators.isNonEmpty(firstName)) {
+                firstNameInput.error = "First name is required"
+                valid = false
+            }
+            if (!Validators.isNonEmpty(lastName)) {
+                lastNameInput.error = "Last name is required"
+                valid = false
+            }
+            if (!Validators.isValidPhoneNumber(phoneNumber)) {
+                phoneInput.error = "Phone number must start with 63 and be 12 digits long"
+                valid = false
+            }
+            if (!valid) {
+                return@setOnClickListener
+            }
+
             val fullName = "${firstNameInput.text} ${lastNameInput.text}".trim()
             presenter.submit(
                 eventId,
                 fullName,
                 emailInput.text.toString(),
-                phoneInput.text.toString(),
+                phoneNumber,
             )
         }
     }
@@ -590,8 +625,12 @@ open class AttendeeRegistrationActivity : AppCompatActivity(), RegistrationContr
 
     override fun showFieldError(field: String, message: String?) {
         when (field) {
-            "fullName" -> firstNameInput.error = message
+            "fullName" -> {
+                firstNameInput.error = message
+                lastNameInput.error = message
+            }
             "email" -> emailInput.error = message
+            "phone" -> phoneInput.error = message
         }
     }
 
@@ -911,10 +950,15 @@ class TransactionHistoryPresenter(
         view = null
     }
 
-    fun load(eventId: String) {
+    fun load(eventId: String? = null) {
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
-            when (val result = repository.getMyEventTransactions(eventId)) {
+            val result = if (eventId.isNullOrBlank()) {
+                repository.getMyTransactions()
+            } else {
+                repository.getMyEventTransactions(eventId)
+            }
+            when (result) {
                 is NetworkResult.Success -> {
                     view?.showLoading(false)
                     view?.renderTransactions(result.data)
@@ -961,7 +1005,8 @@ open class AttendeeTransactionsActivity : AppCompatActivity(), TransactionHistor
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
 
         val eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty()
-        eventTitleText.text = eventTitle.ifBlank { "Event Transactions" }
+        val eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
+        eventTitleText.text = eventTitle.ifBlank { "My Transaction History" }
         
         adapter = TransactionAdapter(eventTitle)
         findViewById<RecyclerView>(R.id.recyclerTransactions).apply {
@@ -969,12 +1014,10 @@ open class AttendeeTransactionsActivity : AppCompatActivity(), TransactionHistor
             adapter = this@AttendeeTransactionsActivity.adapter
         }
 
-        val eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
         if (eventId.isNotBlank()) {
             presenter.load(eventId)
         } else {
-            emptyText.text = "Select an event to view transaction history."
-            emptyText.visibility = View.VISIBLE
+            presenter.load(null)
         }
     }
 
@@ -993,7 +1036,7 @@ open class AttendeeTransactionsActivity : AppCompatActivity(), TransactionHistor
 
     override fun renderTransactions(items: List<TransactionResponse>) {
         emptyText.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        emptyText.text = if (items.isEmpty()) "No transactions found for this event." else emptyText.text
+        emptyText.text = if (items.isEmpty()) "No transactions found yet." else emptyText.text
         adapter.submitItems(items)
         
         val earned = items.filter { it.pointsDelta > 0 }.sumOf { it.pointsDelta }
@@ -1249,10 +1292,10 @@ open class RewardDetailsActivity : AppCompatActivity(), RewardsContract.View {
         pointsRequired = intent.getIntExtra(EXTRA_REWARD_POINTS, 0)
 
         findViewById<View>(R.id.btnBack)?.setOnClickListener { finish() }
-        
+
         findViewById<TextView>(R.id.txtRewardTitle)?.text = intent.getStringExtra(EXTRA_REWARD_NAME)
         findViewById<TextView>(R.id.txtPointsValue)?.text = pointsRequired.toString()
-        
+
         val userId = SessionManager(this).getUserId()
         if (eventId.isNotBlank() && userId != null) {
             presenter.load(eventId, userId)
@@ -1271,7 +1314,7 @@ open class RewardDetailsActivity : AppCompatActivity(), RewardsContract.View {
     override fun showBalance(balance: com.thedavelopers.eventqr.features.rewards.model.dto.PointBalanceResponse) {
         if (balance.pointsBalance < pointsRequired) {
             findViewById<View>(R.id.warningBox)?.visibility = View.VISIBLE
-            findViewById<TextView>(R.id.txtWarningMessage)?.text = 
+            findViewById<TextView>(R.id.txtWarningMessage)?.text =
                 "You need ${pointsRequired - balance.pointsBalance} more points to redeem this reward. Current balance: ${balance.pointsBalance} points."
             findViewById<Button>(R.id.btnRedeemReward)?.isEnabled = false
             findViewById<Button>(R.id.btnRedeemReward)?.alpha = 0.5f
@@ -1331,11 +1374,11 @@ open class ClaimedRewardsActivity : AppCompatActivity(), ClaimedRewardsContract.
 
         presenter = ClaimedRewardsPresenter(this, AttendeeRepository(this))
         adapter = com.thedavelopers.eventqr.features.rewards.ClaimedRewardAdapter()
-        
+
         eventId = intent.getStringExtra(EXTRA_EVENT_ID).orEmpty()
 
         findViewById<View>(R.id.btnBack)?.setOnClickListener { finish() }
-        
+
         findViewById<RecyclerView>(R.id.recyclerClaimedRewards)?.apply {
             layoutManager = LinearLayoutManager(this@ClaimedRewardsActivity)
             adapter = this@ClaimedRewardsActivity.adapter

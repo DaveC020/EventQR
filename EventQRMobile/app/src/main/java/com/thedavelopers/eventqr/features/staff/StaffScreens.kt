@@ -101,6 +101,10 @@ class ScannerPresenter(
     }
 
     fun submitScan(eventId: String, purpose: ScanPurposeResponse, qrValue: String, notes: String, staffUserId: String?) {
+        if (!Validators.isNonEmpty(eventId)) {
+            view?.showMessage("Select an assigned event")
+            return
+        }
         if (!Validators.isNonEmpty(qrValue)) {
             view?.showMessage("QR value is required")
             return
@@ -114,21 +118,10 @@ class ScannerPresenter(
                 staffUserId = staffUserId?.takeIf { it.isNotBlank() }?.let(UUID::fromString),
                 notes = notes.ifBlank { null },
             )
-            when (purpose.code) {
-                com.thedavelopers.eventqr.core.api.dto.ScanPurposeCode.REGISTRATION_LOOKUP -> {
-                    when (val result = repository.verifyScan(request)) {
-                        is NetworkResult.Success -> view?.showVerificationResult(result.data)
-                        is NetworkResult.Error -> view?.showScanError(result.message)
-                        NetworkResult.Loading -> Unit
-                    }
-                }
-                else -> {
-                    when (val result = repository.createTransaction(request, purpose.code)) {
-                        is NetworkResult.Success -> view?.appendScanResult(result.data)
-                        is NetworkResult.Error -> view?.showScanError(result.message)
-                        NetworkResult.Loading -> Unit
-                    }
-                }
+            when (val result = repository.verifyScan(request)) {
+                is NetworkResult.Success -> view?.showVerificationResult(result.data)
+                is NetworkResult.Error -> view?.showScanError(result.message)
+                NetworkResult.Loading -> Unit
             }
             view?.showLoading(false)
         }
@@ -164,7 +157,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        preselectedEventId = intent.getStringExtra("EXTRA_EVENT_ID")
+        preselectedEventId = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_ID)
         
         val sessionManager = SessionManager(this)
         if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
@@ -212,6 +205,10 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         eventSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, view: View?, position: Int, id: Long) {
                 if (position in eventOptions.indices) {
+                    findViewById<TextView>(R.id.txtScannerSelectedEvent)?.apply {
+                        text = eventOptions[position].label
+                        visibility = View.VISIBLE
+                    }
                     presenter.loadPurposes(eventOptions[position].id)
                 }
             }
@@ -222,10 +219,15 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         findViewById<Button>(R.id.btnSubmitScan).setOnClickListener {
             val eventId = eventOptions.getOrNull(eventSpinner.selectedItemPosition)?.id.orEmpty()
             val purpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
-            if (purpose != null) {
-                presenter.submitScan(eventId, purpose, qrInput.text.toString(), notesInput.text.toString(), staffUserId)
-            } else {
+            val qrValue = qrInput.text.toString().trim()
+            if (eventId.isBlank()) {
+                Toast.makeText(this, "Select an assigned event", Toast.LENGTH_SHORT).show()
+            } else if (purpose == null) {
                 Toast.makeText(this, "Select a scan purpose", Toast.LENGTH_SHORT).show()
+            } else if (qrValue.isBlank()) {
+                Toast.makeText(this, "QR value is required", Toast.LENGTH_SHORT).show()
+            } else {
+                presenter.submitScan(eventId, purpose, qrInput.text.toString(), notesInput.text.toString(), staffUserId)
             }
         }
 
@@ -244,18 +246,26 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         eventSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels).also {
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
+
+        findViewById<TextView>(R.id.txtScannerEmptyState).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<Spinner>(R.id.spnScannerEvent).visibility = if (items.size > 1) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.txtScannerSelectedEvent).visibility = if (items.size == 1) View.VISIBLE else View.GONE
         
         preselectedEventId?.let { id ->
             val index = items.indexOfFirst { it.id == id }
             if (index >= 0) {
                 eventSpinner.setSelection(index)
+                findViewById<TextView>(R.id.txtScannerSelectedEvent).text = items[index].label
                 presenter.loadPurposes(id)
                 return
             }
         }
 
         if (items.isNotEmpty()) {
+            findViewById<TextView>(R.id.txtScannerSelectedEvent).text = items.first().label
             presenter.loadPurposes(items.first().id)
+        } else {
+            findViewById<Button>(R.id.btnSubmitScan).isEnabled = false
         }
     }
 
@@ -268,42 +278,70 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         }
         
         if (items.isNotEmpty()) {
-            findViewById<Button>(R.id.btnSubmitScan)?.text = "Start Scanning"
+            findViewById<Button>(R.id.btnSubmitScan)?.text = "Verify QR"
+            findViewById<Button>(R.id.btnSubmitScan)?.isEnabled = true
         } else {
-            findViewById<Button>(R.id.btnSubmitScan)?.text = "Select Scan Purpose First"
+            findViewById<Button>(R.id.btnSubmitScan)?.text = "No scan purposes configured"
+            findViewById<Button>(R.id.btnSubmitScan)?.isEnabled = false
             Toast.makeText(this, "No active scan purposes for this event. Contact organizer.", Toast.LENGTH_LONG).show()
         }
     }
 
     override fun appendScanResult(result: TransactionResponse) {
-        resultText.text = buildString {
-            append("${result.transactionResult.name} • ${result.transactionType.name}\n")
-            result.attendeeName?.let { append("Attendee: $it\n") }
-            result.registrationStatus?.let { append("Status: $it\n") }
-            if (result.pointsDelta != 0) {
-                append("Points: ${if (result.pointsDelta > 0) "+" else ""}${result.pointsDelta}")
-            }
-        }
-        resultText.visibility = View.VISIBLE
-        
-        adapter.submitItems(listOf(result) + adapter.getItems())
-        Toast.makeText(this, "Scan recorded", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, StaffTransactionResultActivity::class.java).apply {
+            putExtra(StaffScreenExtras.EXTRA_EVENT_ID, result.eventId.toString())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, result.eventTitle.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_ID, result.attendeeUserId.toString())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_NAME, result.attendeeName.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_REGISTRATION_ID, result.registrationId.toString())
+            putExtra(StaffScreenExtras.EXTRA_QR_CREDENTIAL_ID, result.qrCredentialId.toString())
+            putExtra(StaffScreenExtras.EXTRA_TRANSACTION_ID, result.transactionId.toString())
+            putExtra(StaffScreenExtras.EXTRA_TRANSACTION_RESULT, result.transactionResult.name)
+            putExtra(StaffScreenExtras.EXTRA_TRANSACTION_TYPE, result.transactionType.name)
+            putExtra(StaffScreenExtras.EXTRA_POINTS_DELTA, result.pointsDelta)
+            putExtra(StaffScreenExtras.EXTRA_REASON, result.reason.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCANNED_AT, result.scannedAt?.toString().orEmpty())
+        })
     }
 
     override fun showVerificationResult(result: ScanVerificationResponse) {
-        resultText.text = buildString {
-            append("${result.message ?: "Verification successful"}\n")
-            append("Attendee: ${result.attendeeName ?: "Unknown attendee"}\n")
-            append("Email: ${result.attendeeEmail ?: "Unknown email"}\n")
-            append("Status: ${result.registrationStatus.name}\n")
-            append("QR Active: ${if (result.qrActive) "Yes" else "No"}")
-        }
-        resultText.visibility = View.VISIBLE
-        Toast.makeText(this, result.message ?: "QR verified", Toast.LENGTH_SHORT).show()
+        val event = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        val purpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
+            putExtra(StaffScreenExtras.EXTRA_EVENT_ID, result.eventId.toString())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, event?.label.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, result.scanPurposeId.toString())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, purpose?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, result.scanPurposeCode.name)
+            putExtra(StaffScreenExtras.EXTRA_QR_VALUE, result.qrValue)
+            putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_IS_VALID, true)
+            putExtra(StaffScreenExtras.EXTRA_MESSAGE, result.message.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_ID, result.attendeeUserId.toString())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_NAME, result.attendeeName.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_ATTENDEE_EMAIL, result.attendeeEmail.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_REGISTRATION_ID, result.registrationId.toString())
+            putExtra(StaffScreenExtras.EXTRA_QR_CREDENTIAL_ID, result.qrCredentialId.toString())
+            putExtra(StaffScreenExtras.EXTRA_REGISTRATION_STATUS, result.registrationStatus.name)
+            putExtra(StaffScreenExtras.EXTRA_VERIFIED_AT, result.verifiedAt?.toString().orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_QR_ACTIVE, result.qrActive)
+        })
     }
 
     override fun showScanError(message: String) {
-        resultText.text = message
+        val event = eventOptions.getOrNull(eventSpinner.selectedItemPosition) ?: eventOptions.firstOrNull()
+        val purpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
+            putExtra(StaffScreenExtras.EXTRA_EVENT_ID, event?.id.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, event?.label.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, purpose?.scanPurposeId?.toString().orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, purpose?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, purpose?.code?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_QR_VALUE, qrInput.text.toString())
+            putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_IS_VALID, false)
+            putExtra(StaffScreenExtras.EXTRA_MESSAGE, message)
+        })
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
@@ -329,6 +367,10 @@ class StaffTransactionsPresenter(
     }
 
     fun load(eventId: String) {
+        if (eventId.isBlank()) {
+            view?.showMessage("Select an assigned event first")
+            return
+        }
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.getTransactionsByEvent(eventId)) {
@@ -352,6 +394,7 @@ interface StaffTransactionsContract {
 open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsContract.View {
     private lateinit var presenter: StaffTransactionsPresenter
     private lateinit var adapter: TransactionLogAdapter
+    private var selectedEventId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -375,8 +418,34 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
         
         setupBottomNav()
 
+        selectedEventId = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_ID).orEmpty()
+
+        if (selectedEventId.isNotBlank()) {
+            findViewById<EditText>(R.id.edtStaffTransactionsEventId).setText(selectedEventId)
+            presenter.load(selectedEventId)
+        } else {
+            kotlinx.coroutines.MainScope().launch {
+                when (val eventsResult = StaffRepository(this@StaffTransactionsActivity).getEvents()) {
+                    is NetworkResult.Success -> {
+                        val firstEvent = eventsResult.data.firstOrNull()
+                        if (firstEvent == null) {
+                            findViewById<TextView>(R.id.txtStaffTransactionsEmptyState).visibility = View.VISIBLE
+                            showMessage("No assigned events found")
+                            return@launch
+                        }
+                        selectedEventId = firstEvent.eventId.toString()
+                        findViewById<EditText>(R.id.edtStaffTransactionsEventId).setText(selectedEventId)
+                        presenter.load(selectedEventId)
+                    }
+                    is NetworkResult.Error -> showMessage(eventsResult.message)
+                    NetworkResult.Loading -> Unit
+                }
+            }
+        }
+
         findViewById<Button>(R.id.btnLoadStaffTransactions).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtStaffTransactionsEventId).text.toString())
+            selectedEventId = findViewById<EditText>(R.id.edtStaffTransactionsEventId).text.toString()
+            presenter.load(selectedEventId)
         }
     }
 
@@ -407,6 +476,8 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
         findViewById<TextView>(R.id.txtTotalScans).text = items.size.toString()
         findViewById<TextView>(R.id.txtSuccessfulScans).text = items.count { it.transactionResult.name == "APPROVED" || it.transactionResult.name == "SUCCESS" }.toString()
         findViewById<TextView>(R.id.txtRejectedScans).text = items.count { it.transactionResult.name != "APPROVED" && it.transactionResult.name != "SUCCESS" }.toString()
+        findViewById<TextView>(R.id.txtStaffTransactionsEmptyState).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<RecyclerView>(R.id.recyclerStaffTransactions).visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
     }
 
     override fun showMessage(message: String) {
@@ -415,7 +486,7 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
 
     override fun showLoading(isLoading: Boolean) {
         findViewById<View>(R.id.progressScanner)?.visibility = if (isLoading) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.btnSubmitScan)?.isEnabled = !isLoading
+        findViewById<View>(R.id.btnLoadStaffTransactions)?.isEnabled = !isLoading
     }
 }
 
@@ -478,11 +549,12 @@ interface IdPrintingContract {
 open class IdPrintingActivity : AppCompatActivity(), IdPrintingContract.View {
     private lateinit var presenter: IdPrintingPresenter
     private lateinit var adapter: IdPrintLogAdapter
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val sessionManager = SessionManager(this)
+        sessionManager = SessionManager(this)
         if (RoleMapper.normalizeRole(sessionManager.getUserRole()) != AccountRole.STAFF.name) {
             Toast.makeText(this, "Access Denied: Staff only", Toast.LENGTH_LONG).show()
             finish()
@@ -493,6 +565,15 @@ open class IdPrintingActivity : AppCompatActivity(), IdPrintingContract.View {
 
         presenter = IdPrintingPresenter(this, StaffRepository(this))
         adapter = IdPrintLogAdapter()
+
+        val preselectedEventId = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_ID).orEmpty()
+        if (preselectedEventId.isNotBlank()) {
+            findViewById<EditText>(R.id.edtPrintEventId).setText(preselectedEventId)
+            presenter.loadLogs(preselectedEventId)
+        }
+        sessionManager.getUserId()?.takeIf { it.isNotBlank() }?.let { userId ->
+            findViewById<EditText>(R.id.edtPrintStaffUserId).setText(userId)
+        }
 
         findViewById<RecyclerView>(R.id.recyclerIdPrintLogs).apply {
             layoutManager = LinearLayoutManager(this@IdPrintingActivity)
@@ -532,7 +613,7 @@ open class IdPrintingActivity : AppCompatActivity(), IdPrintingContract.View {
 
     override fun showLoading(isLoading: Boolean) {
         findViewById<View>(R.id.progressScanner)?.visibility = if (isLoading) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.btnSubmitScan)?.isEnabled = !isLoading
+        findViewById<View>(R.id.btnPrintId)?.isEnabled = !isLoading
     }
 }
 
@@ -548,6 +629,10 @@ class EventRegistrationsPresenter(
     }
 
     fun load(eventId: String) {
+        if (eventId.isBlank()) {
+            view?.showMessage("Select an assigned event first")
+            return
+        }
         view?.showLoading(true)
         job = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.getRegistrationsByEvent(eventId)) {
@@ -571,6 +656,7 @@ interface EventRegistrationsContract {
 open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsContract.View {
     private lateinit var presenter: EventRegistrationsPresenter
     private lateinit var adapter: RegistrationAdapter
+    private var selectedEventId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -585,15 +671,49 @@ open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsC
         setContentView(R.layout.activity_event_registrations)
 
         presenter = EventRegistrationsPresenter(this, StaffRepository(this))
-        adapter = RegistrationAdapter()
+        adapter = RegistrationAdapter { registration ->
+            startActivity(Intent(this, StaffAttendeeDetailsActivity::class.java).apply {
+                putExtra(StaffScreenExtras.EXTRA_EVENT_ID, registration.eventId.toString())
+                putExtra(StaffScreenExtras.EXTRA_ATTENDEE_ID, registration.attendeeUserId.toString())
+                putExtra(StaffScreenExtras.EXTRA_REGISTRATION_ID, registration.registrationId.toString())
+                putExtra(StaffScreenExtras.EXTRA_QR_CREDENTIAL_ID, registration.qrCredentialId?.toString().orEmpty())
+                putExtra(StaffScreenExtras.EXTRA_ATTENDEE_NAME, registration.attendeeName)
+                putExtra(StaffScreenExtras.EXTRA_ATTENDEE_EMAIL, registration.attendeeEmail)
+                putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, registration.eventTitle.orEmpty())
+            })
+        }
 
         findViewById<RecyclerView>(R.id.recyclerEventRegistrations).apply {
             layoutManager = LinearLayoutManager(this@EventRegistrationsActivity)
             adapter = this@EventRegistrationsActivity.adapter
         }
 
+        selectedEventId = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_ID).orEmpty()
+        if (selectedEventId.isNotBlank()) {
+            findViewById<EditText>(R.id.edtRegistrationsEventId).setText(selectedEventId)
+            presenter.load(selectedEventId)
+        } else {
+            kotlinx.coroutines.MainScope().launch {
+                when (val eventsResult = StaffRepository(this@EventRegistrationsActivity).getEvents()) {
+                    is NetworkResult.Success -> {
+                        val firstEvent = eventsResult.data.firstOrNull()
+                        if (firstEvent == null) {
+                            showMessage("No assigned events found")
+                            return@launch
+                        }
+                        selectedEventId = firstEvent.eventId.toString()
+                        findViewById<EditText>(R.id.edtRegistrationsEventId).setText(selectedEventId)
+                        presenter.load(selectedEventId)
+                    }
+                    is NetworkResult.Error -> showMessage(eventsResult.message)
+                    NetworkResult.Loading -> Unit
+                }
+            }
+        }
+
         findViewById<Button>(R.id.btnLoadEventRegistrations).setOnClickListener {
-            presenter.load(findViewById<EditText>(R.id.edtRegistrationsEventId).text.toString())
+            selectedEventId = findViewById<EditText>(R.id.edtRegistrationsEventId).text.toString()
+            presenter.load(selectedEventId)
         }
     }
 
@@ -604,6 +724,7 @@ open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsC
 
     override fun renderRegistrations(items: List<RegistrationResponse>) {
         adapter.submitItems(items)
+        findViewById<RecyclerView>(R.id.recyclerEventRegistrations).visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
     }
 
     override fun showMessage(message: String) {
@@ -612,7 +733,7 @@ open class EventRegistrationsActivity : AppCompatActivity(), EventRegistrationsC
 
     override fun showLoading(isLoading: Boolean) {
         findViewById<View>(R.id.progressScanner)?.visibility = if (isLoading) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.btnSubmitScan)?.isEnabled = !isLoading
+        findViewById<View>(R.id.btnLoadEventRegistrations)?.isEnabled = !isLoading
     }
 }
 
@@ -632,17 +753,22 @@ class StaffDashboardPresenter(
         job = kotlinx.coroutines.MainScope().launch {
             when (val result = repository.getEvents()) {
                 is NetworkResult.Success -> {
-                    view?.renderEvents(result.data.take(2))
-                    // For demo, we just show some transactions as recent scans
-                    if (result.data.isNotEmpty()) {
-                        val firstEventId = result.data.first().eventId.toString()
-                        when (val trans = repository.getTransactionsByEvent(firstEventId)) {
-                            is NetworkResult.Success -> {
-                                view?.renderRecentScans(trans.data.take(3))
-                                view?.updateStats(trans.data.size, trans.data.count { it.transactionType.name == "CHECK_IN" })
+                    view?.renderEvents(result.data)
+                    if (result.data.isEmpty()) {
+                        view?.renderRecentScans(emptyList())
+                        view?.updateStats(0, 0)
+                    } else {
+                        val recentTransactions = mutableListOf<TransactionResponse>()
+                        for (event in result.data) {
+                            when (val trans = repository.getTransactionsByEvent(event.eventId.toString())) {
+                                is NetworkResult.Success -> recentTransactions.addAll(trans.data)
+                                is NetworkResult.Error -> Unit
+                                NetworkResult.Loading -> Unit
                             }
-                            else -> Unit
                         }
+                        val sortedTransactions = recentTransactions.sortedByDescending { it.scannedAt ?: java.time.Instant.EPOCH }
+                        view?.renderRecentScans(sortedTransactions.take(5))
+                        view?.updateStats(sortedTransactions.size, sortedTransactions.count { it.transactionType.name == "ENTRY" || it.transactionType.name == "ATTENDANCE" })
                     }
                 }
                 is NetworkResult.Error -> view?.showMessage(result.message)
@@ -684,7 +810,7 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
         adapter = TransactionLogAdapter()
         eventAdapter = StaffEventAdapter { event ->
             val intent = Intent(this, ScannerActivity::class.java)
-            intent.putExtra("EXTRA_EVENT_ID", event.eventId.toString())
+            intent.putExtra(StaffScreenExtras.EXTRA_EVENT_ID, event.eventId.toString())
             startActivity(intent)
         }
 
@@ -698,7 +824,24 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
             adapter = eventAdapter
         }
 
-        findViewById<TextView>(R.id.txtStaffName).text = sessionManager.getFullName() ?: "Dharell Dave"
+        findViewById<TextView>(R.id.txtStaffName).text = sessionManager.getFullName() ?: sessionManager.getEmail() ?: "Staff User"
+        findViewById<TextView>(R.id.txtStaffEmail).text = sessionManager.getEmail() ?: ""
+
+        findViewById<View>(R.id.btnQuickScan).setOnClickListener {
+            startActivity(Intent(this, ScannerActivity::class.java))
+        }
+
+        findViewById<View>(R.id.btnQuickRegistrations).setOnClickListener {
+            startActivity(Intent(this, EventRegistrationsActivity::class.java))
+        }
+
+        findViewById<View>(R.id.btnQuickTransactions).setOnClickListener {
+            startActivity(Intent(this, StaffTransactionsActivity::class.java))
+        }
+
+        findViewById<View>(R.id.btnQuickIdPrinting).setOnClickListener {
+            startActivity(Intent(this, IdPrintingActivity::class.java))
+        }
 
         findViewById<View>(R.id.txtScansToday).setOnClickListener {
             startActivity(Intent(this, ScannerActivity::class.java))
@@ -731,6 +874,8 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
     override fun renderEvents(items: List<com.thedavelopers.eventqr.features.events.model.dto.EventResponse>) {
         findViewById<TextView>(R.id.txtAssignedCount).text = items.size.toString()
         eventAdapter.submitItems(items)
+        findViewById<TextView>(R.id.txtAssignedEmptyState).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<RecyclerView>(R.id.recyclerAssignedEvents).visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
         
         if (items.isEmpty()) {
             Toast.makeText(this, "No events assigned to you yet", Toast.LENGTH_LONG).show()
@@ -753,7 +898,7 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
 
     override fun showLoading(isLoading: Boolean) {
         findViewById<View>(R.id.progressScanner)?.visibility = if (isLoading) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.btnSubmitScan)?.isEnabled = !isLoading
+        findViewById<View>(R.id.btnQuickScan)?.isEnabled = !isLoading
     }
 }
 
