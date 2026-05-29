@@ -3,12 +3,17 @@ package com.thedavelopers.eventqr.features.organizer.dashboard
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.thedavelopers.eventqr.R
+import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.features.organizer.*
 import com.thedavelopers.eventqr.features.organizer.model.dto.OrganizerDashboardDto
 import kotlinx.coroutines.MainScope
@@ -73,12 +78,98 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnDashboardRetry).setOnClickListener {
             loadDashboard()
         }
-        findViewById<View>(R.id.btnLogoutTest).setOnClickListener {
-            sessionManager.clearSession()
-            val intent = Intent(this, com.thedavelopers.eventqr.features.auth.login.LoginActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-            finish()
+
+        setupPortalSwitcher()
+    }
+
+    private fun setupPortalSwitcher() {
+        val role = sessionManager.getUserRole() ?: return
+        val normalizedRole = RoleMapper.normalizeRole(role)
+        val allowedPortals = mutableListOf<String>()
+        allowedPortals.add("Attendee Portal")
+
+        if (normalizedRole == AccountRole.STAFF.name || normalizedRole == AccountRole.ADMIN.name || normalizedRole == AccountRole.SUPER_ADMIN.name) {
+            allowedPortals.add("Staff Portal")
+        }
+        if (normalizedRole == AccountRole.ORGANIZER.name || normalizedRole == AccountRole.ADMIN.name || normalizedRole == AccountRole.SUPER_ADMIN.name) {
+            allowedPortals.add("Organizer Portal")
+        }
+        if (normalizedRole == AccountRole.ADMIN.name || normalizedRole == AccountRole.SUPER_ADMIN.name) {
+            allowedPortals.add("Admin Portal")
+        }
+
+        if (allowedPortals.size > 1) {
+            val chip = findViewById<View>(R.id.portalSwitcherChip)
+            chip.visibility = View.VISIBLE
+            findViewById<View>(R.id.txtHeaderSubtitleDot).visibility = View.VISIBLE
+            chip.setOnClickListener {
+                showPortalSwitcher(allowedPortals)
+            }
+        }
+    }
+
+    private fun showPortalSwitcher(portals: List<String>) {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_portal_switcher, null)
+        
+        val container = view.findViewById<LinearLayout>(R.id.portalOptionsContainer)
+        portals.forEach { portal ->
+            val portalView = layoutInflater.inflate(R.layout.item_portal_option, container, false)
+            portalView.findViewById<TextView>(R.id.txtPortalName).text = portal
+            
+            val icon = portalView.findViewById<android.widget.ImageView>(R.id.imgPortalIcon)
+            val subtitle = portalView.findViewById<TextView>(R.id.txtPortalSubtitle)
+            
+            when(portal) {
+                "Attendee Portal" -> {
+                    icon.setImageResource(R.drawable.ic_nav_profile)
+                    subtitle.text = "Events, rewards, and your profile"
+                }
+                "Staff Portal" -> {
+                    icon.setImageResource(R.drawable.ic_qr_scan)
+                    subtitle.text = "Scan QR codes and manage entries"
+                }
+                "Organizer Portal" -> {
+                    icon.setImageResource(R.drawable.ic_nav_calendar)
+                    subtitle.text = "Manage your events and attendees"
+                }
+                "Admin Portal" -> {
+                    icon.setImageResource(R.drawable.ic_group)
+                    subtitle.text = "Platform administration and oversight"
+                }
+            }
+
+            if (portal == "Organizer Portal") {
+                portalView.findViewById<View>(R.id.currentPortalBadge).visibility = View.VISIBLE
+            }
+
+            portalView.setOnClickListener {
+                dialog.dismiss()
+                switchToPortal(portal)
+            }
+            container.addView(portalView)
+        }
+        
+        dialog.setContentView(view)
+        dialog.show()
+    }
+
+    private fun switchToPortal(portal: String) {
+        when(portal) {
+            "Attendee Portal" -> {
+                startActivity(Intent(this, com.thedavelopers.eventqr.features.dashboard.DashboardActivity::class.java))
+                finish()
+            }
+            "Staff Portal" -> {
+                startActivity(Intent(this, com.thedavelopers.eventqr.features.staff.StaffDashboardActivity::class.java))
+                finish()
+            }
+            "Organizer Portal" -> {
+                // Already here
+            }
+            "Admin Portal" -> {
+                Toast.makeText(this, "Admin Portal coming soon", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
