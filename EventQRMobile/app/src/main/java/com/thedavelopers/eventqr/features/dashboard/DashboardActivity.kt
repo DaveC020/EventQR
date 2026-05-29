@@ -91,7 +91,6 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         notificationDot = findViewById(R.id.viewNotificationDot)
         upcomingEventsLayout = findViewById(R.id.layoutUpcomingEvents)
         discoverEventsLayout = findViewById(R.id.layoutDiscoverEvents)
-        upcomingEventsViewAll = findViewById(R.id.txtUpcomingEventsViewAll)
         discoverEventsSeeAll = findViewById(R.id.txtDiscoverEventsSeeAll)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshDashboard)
 
@@ -103,9 +102,6 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
 
         notificationBell.setOnClickListener {
             startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeNotificationsActivity::class.java))
-        }
-        upcomingEventsViewAll.setOnClickListener {
-            startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeEventsActivity::class.java))
         }
         discoverEventsSeeAll.setOnClickListener {
             startActivity(Intent(this, com.thedavelopers.eventqr.features.attendee.AttendeeEventsActivity::class.java))

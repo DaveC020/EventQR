@@ -429,17 +429,6 @@
                             android:textColor="#111827"
                             android:textSize="20sp"
                             android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/txtUpcomingEventsViewAll"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:text="View All"
-                            android:textColor="#4F46E5"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
 

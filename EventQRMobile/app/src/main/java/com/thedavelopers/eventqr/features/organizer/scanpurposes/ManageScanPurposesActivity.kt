@@ -22,6 +22,8 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
     private lateinit var repository: OrganizerRepository
     private lateinit var selectedEvent: OrganizerMvpEvent
     private lateinit var purposeHost: LinearLayout
+    private var scanPurposes: List<OrganizerMvpScanPurpose> = emptyList()
+    private var loadRequestSerial: Int = 0
     private var refreshCount: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,15 +49,20 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
 
     private fun loadPurposes() {
         refreshCount += 1
+        val requestSerial = ++loadRequestSerial
         purposeHost.removeAllViews()
         purposeHost.addView(loadingState("Loading scan purposes..."))
         MainScope().launch {
             val source = repository.loadScanPurposesForMvp(selectedEvent.id)
+            if (!isFinishing && !isDestroyed && requestSerial == loadRequestSerial) {
+                scanPurposes = source.data.toList()
+            }
+            if (requestSerial != loadRequestSerial) return@launch
             Log.d(
                 TAG,
                 "eventId=${selectedEvent.id} refreshCount=$refreshCount loadedCount=${source.data.size} source=${source.source} message=${source.message}"
             )
-            renderPurposes(source.data)
+            renderPurposes(scanPurposes)
             source.message?.let {
                 Toast.makeText(this@ManageScanPurposesActivity, it, Toast.LENGTH_SHORT).show()
             }
@@ -96,9 +103,11 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
             )
 
             if (purpose.id.isNullOrBlank()) {
+                val updatedPurpose = purpose.copy(enabled = enabled)
+                val updatedPurposes = scanPurposes.upsert(updatedPurpose)
                 val createResult = repository.saveScanPurposesForMvp(
                     selectedEvent.id,
-                    listOf(purpose.copy(enabled = enabled))
+                    updatedPurposes
                 )
                 Log.d(
                     TAG,
@@ -110,15 +119,16 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
                         "Failed to update: ${createResult.message ?: "Unable to save scan purpose"}",
                         Toast.LENGTH_SHORT
                     ).show()
-                    loadPurposes()
                     return@launch
                 }
+                loadRequestSerial += 1
+                scanPurposes = createResult.data.ifEmpty { updatedPurposes }
                 Toast.makeText(
                     this@ManageScanPurposesActivity,
                     "${purpose.label} ${if (enabled) "enabled" else "disabled"}",
                     Toast.LENGTH_SHORT
                 ).show()
-                loadPurposes()
+                renderPurposes(scanPurposes)
                 return@launch
             }
 
@@ -129,12 +139,14 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
                         TAG,
                         "eventId=${selectedEvent.id} purposeId=${purpose.id} toggleApiResult=SUCCESS active=${result.data.enabled}"
                     )
+                    loadRequestSerial += 1
+                    scanPurposes = scanPurposes.upsert(purpose.copy(enabled = enabled))
                     Toast.makeText(
                         this@ManageScanPurposesActivity,
                         "${purpose.label} ${if (enabled) "enabled" else "disabled"}",
                         Toast.LENGTH_SHORT
                     ).show()
-                    loadPurposes()
+                    renderPurposes(scanPurposes)
                 }
                 is NetworkResult.Error -> {
                     Log.w(
@@ -146,7 +158,6 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
                         "Failed to update: ${result.message}",
                         Toast.LENGTH_SHORT
                     ).show()
-                    loadPurposes()
                 }
                 NetworkResult.Loading -> {
                     Log.d(
@@ -225,14 +236,34 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
 
     private fun savePurpose(purpose: OrganizerMvpScanPurpose) {
         MainScope().launch {
-            val source = repository.saveScanPurposesForMvp(selectedEvent.id, listOf(purpose))
+            val updatedPurposes = scanPurposes.upsert(purpose)
+            val source = repository.saveScanPurposesForMvp(selectedEvent.id, updatedPurposes)
             Log.d(TAG, "Save purpose ${purpose.label} result: ${source.source}")
             if (source.source == OrganizerMvpDataSource.BACKEND) {
+                loadRequestSerial += 1
+                scanPurposes = source.data.ifEmpty { updatedPurposes }
                 Toast.makeText(this@ManageScanPurposesActivity, "Saved successfully", Toast.LENGTH_SHORT).show()
-                loadPurposes()
+                renderPurposes(scanPurposes)
             } else {
                 Toast.makeText(this@ManageScanPurposesActivity, "Failed to save: ${source.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun List<OrganizerMvpScanPurpose>.upsert(purpose: OrganizerMvpScanPurpose): List<OrganizerMvpScanPurpose> {
+        val existingIndex = indexOfFirst { existing ->
+            when {
+                purpose.id != null && existing.id == purpose.id -> true
+                purpose.id.isNullOrBlank() && existing.id.isNullOrBlank() ->
+                    existing.label.equals(purpose.label, ignoreCase = true) && existing.code == purpose.code
+                else -> false
+            }
+        }
+
+        return if (existingIndex >= 0) {
+            toMutableList().apply { set(existingIndex, purpose) }
+        } else {
+            plus(purpose)
         }
     }
 }

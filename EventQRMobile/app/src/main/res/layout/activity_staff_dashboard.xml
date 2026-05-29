@@ -287,7 +287,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Scans Today"
-                                android:textColor="@color/eventqr_muted"
+                                android:textColor="@color/black"
                                 android:textSize="12sp" />
                         </LinearLayout>
 
@@ -321,21 +321,22 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Check-Ins Today"
-                                android:textColor="@color/eventqr_muted"
+                                android:textColor="@color/black"
                                 android:textSize="12sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 
                 <!-- My Assigned Events Card -->
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
                     android:background="@drawable/bg_card"
                     android:elevation="4dp"
                     android:orientation="vertical"
-                    android:padding="20dp"
-                    android:layout_marginBottom="16dp">
+                    android:padding="20dp">
 
                     <RelativeLayout
                         android:layout_width="match_parent"
