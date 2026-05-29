@@ -29,7 +29,7 @@
                     android:layout_height="32dp"
                     android:layout_centerVertical="true"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_media_previous"
+                    android:src="@drawable/back_btn"
                     android:contentDescription="Back"
                     app:tint="#111111"/>
 

@@ -13,9 +13,21 @@
         android:paddingTop="32dp"
         android:paddingBottom="10dp">
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="54dp">
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/back_btn"
+                    android:background="?attr/selectableItemBackground"
+                    android:layout_marginRight="20dp"
+                    android:layout_gravity="center"
+                    android:padding="10dp"/>
 
             <TextView
                 android:id="@+id/btnBack"
@@ -25,11 +37,13 @@
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:text="‹  Edit Profile"
+                android:text="Edit Profile"
                 android:textColor="#000000"
                 android:textSize="29sp"
                 android:textStyle="bold" />
-        </FrameLayout>
+
+            </LinearLayout>
+
 
         <FrameLayout
             android:layout_width="130dp"
@@ -84,16 +98,16 @@
             android:background="@drawable/bg_soft_input_no_stroke"
             android:hint="Darell Dave"
             android:paddingHorizontal="18dp"
-            android:textColor="#111111"
-            android:textColorHint="#111111"
+            android:textColor="#000000"
+            android:textColorHint="#7C7C7C"
             android:textSize="18sp" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="Email" android:textColor="#000000" android:textSize="17sp" android:textStyle="bold" />
-        <EditText android:id="@+id/edtEmail" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="10dp" android:background="@drawable/bg_soft_input_no_stroke" android:enabled="false" android:hint="john.doe@example.com" android:paddingHorizontal="18dp" android:textColorHint="#8B8E98" android:textSize="18sp" />
+        <EditText android:id="@+id/edtEmail" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="10dp" android:background="@drawable/bg_soft_input_no_stroke" android:enabled="false" android:hint="  john.doe@example.com" android:paddingHorizontal="18dp" android:textColorHint="#8B8E98" android:textSize="18sp" android:drawableStart="@drawable/email_icon"/>
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Email cannot be changed" android:textColor="#6B7280" android:textSize="16sp" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="Phone Number" android:textColor="#000000" android:textSize="17sp" android:textStyle="bold" />
-        <EditText android:id="@+id/edtPhone" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="10dp" android:background="@drawable/bg_soft_input_no_stroke" android:hint="+63 912 3456 789" android:paddingHorizontal="18dp" android:textColorHint="#8B8E98" android:textSize="18sp" />
+        <EditText android:id="@+id/edtPhone" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="10dp" android:background="@drawable/bg_soft_input_no_stroke" android:hint="  +63 912 3456 789" android:paddingHorizontal="18dp" android:textColorHint="#8B8E98" android:textSize="18sp" android:drawableStart="@drawable/phone_icon" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="Bio / Description" android:textColor="#000000" android:textSize="17sp" android:textStyle="bold" />
         <EditText android:id="@+id/edtBio" android:layout_width="match_parent" android:layout_height="122dp" android:layout_marginTop="10dp" android:background="@drawable/bg_soft_input_no_stroke" android:gravity="top" android:hint="Tell us about yourself" android:inputType="textMultiLine" android:padding="18dp" android:textColorHint="#6B7280" android:textSize="18sp" />
@@ -101,7 +115,7 @@
         <Button
             android:id="@+id/btnSaveChanges"
             android:layout_width="match_parent"
-            android:layout_height="62dp"
+            android:layout_height="52dp"
             android:layout_marginTop="18dp"
             android:background="@drawable/bg_primary_button"
             android:text="Save Changes"

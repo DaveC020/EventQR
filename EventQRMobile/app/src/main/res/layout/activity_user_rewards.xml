@@ -31,7 +31,7 @@
                 android:hint="AI Summit 2024"
                 android:paddingHorizontal="20dp"
                 android:textColor="#111111"
-                android:textColorHint="#111111"
+                android:textColorHint="#404040"
                 android:textSize="16sp" />
 
             <Button android:id="@+id/btnLoadRewards" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />

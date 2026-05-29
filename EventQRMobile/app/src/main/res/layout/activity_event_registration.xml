@@ -22,7 +22,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
-            android:src="@android:drawable/ic_menu_revert"
+            android:src="@drawable/back_btn"
             app:tint="@color/eventqr_text" />
 
         <TextView
@@ -209,9 +209,9 @@
                         android:layout_height="48dp"
                         android:layout_marginTop="4dp"
                         android:background="@drawable/bg_soft_input_no_stroke"
-                        android:drawableStart="@android:drawable/ic_dialog_email"
+                        android:drawableStart="@drawable/email_icon"
                         android:drawablePadding="8dp"
-                        android:hint="john.doe@university.edu"
+                        android:hint=" john.doe@university.edu"
                         android:inputType="textEmailAddress"
                         android:paddingHorizontal="12dp"
                         android:textSize="14sp" />
@@ -230,9 +230,9 @@
                         android:layout_height="48dp"
                         android:layout_marginTop="4dp"
                         android:background="@drawable/bg_soft_input_no_stroke"
-                        android:drawableStart="@android:drawable/ic_menu_call"
+                        android:drawableStart="@drawable/phone_icon"
                         android:drawablePadding="8dp"
-                        android:hint="+63 912 3456 789"
+                        android:hint=" +63 912 3456 789"
                         android:inputType="phone"
                         android:paddingHorizontal="12dp"
                         android:textSize="14sp" />

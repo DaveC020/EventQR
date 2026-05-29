@@ -16,22 +16,30 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="28dp"
-            android:paddingTop="36dp"
-            android:paddingBottom="30dp">
+            android:paddingTop="25dp"
+            android:paddingBottom="20dp">
 
             <LinearLayout
-                android:id="@+id/btnBack"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:clickable="true"
-                android:focusable="true">
+                >
+
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/back_btn"
+                    android:id="@+id/btnBack"
+                    android:padding="5dp"
+                    android:layout_marginRight="20dp"
+                    android:background="name"/>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:gravity="center_vertical"
-                    android:text="‹  Reward Details"
+                    android:text="Reward Details"
                     android:textColor="#000000"
                     android:textSize="28sp"
                     android:textStyle="bold" />

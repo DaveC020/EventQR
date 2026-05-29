@@ -13,15 +13,32 @@
         android:paddingTop="24dp"
         android:paddingBottom="32dp">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/back_btn"
+                android:layout_gravity="center"
+                android:background="name"
+                android:layout_marginRight="15dp"
+                android:layout_marginLeft="5dp"
+                android:padding="5dp"/>
+
         <TextView
             android:id="@+id/backText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingVertical="8dp"
-            android:text="‹  Request Event Creation"
+            android:text="Request Event Creation"
             android:textColor="#111827"
             android:textSize="24sp"
             android:textStyle="bold" />
+
+        </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
