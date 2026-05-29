@@ -12,11 +12,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.features.admin.AdminEventApprovalBackendActivity
-import com.thedavelopers.eventqr.features.admin.AdminBottomNavItem
 import com.thedavelopers.eventqr.features.admin.AdminRepository
 import com.thedavelopers.eventqr.features.admin.dashboard.AdminDashboardActivity
 import com.thedavelopers.eventqr.features.admin.users.AdminAccountManagementActivity
-import com.thedavelopers.eventqr.features.admin.configureAdminBottomNav
 import com.thedavelopers.eventqr.features.audit.model.dto.AuditLogResponse
 import kotlinx.coroutines.launch
 
@@ -44,7 +42,7 @@ class AdminAuditLogsActivity : AppCompatActivity() {
         adapter = AdminAuditLogAdapter()
         bindViews()
         bindFilterClicks()
-        configureAdminBottomNav(AdminBottomNavItem.LOGS)
+        bindNav()
         loadLogs()
     }
 
@@ -69,6 +67,24 @@ class AdminAuditLogsActivity : AppCompatActivity() {
         chipAccount.setOnClickListener { setFilter(AuditFilter.ACCOUNT) }
         chipSecurity.setOnClickListener { setFilter(AuditFilter.SECURITY) }
         chipNotification.setOnClickListener { setFilter(AuditFilter.NOTIFICATION) }
+    }
+
+    private fun bindNav() {
+        findViewById<View>(R.id.navDashboard).setOnClickListener {
+            startActivity(Intent(this, AdminDashboardActivity::class.java))
+            finish()
+        }
+        findViewById<View>(R.id.navRequests).setOnClickListener {
+            startActivity(Intent(this, AdminEventApprovalBackendActivity::class.java))
+            finish()
+        }
+        findViewById<View>(R.id.navAccounts).setOnClickListener {
+            startActivity(Intent(this, AdminAccountManagementActivity::class.java))
+            finish()
+        }
+        findViewById<View>(R.id.navLogs).setOnClickListener {
+            // current tab
+        }
     }
 
     private fun loadLogs() {

@@ -16,8 +16,6 @@ import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.RoleMapper
-import com.thedavelopers.eventqr.features.staff.StaffBottomNavItem
-import com.thedavelopers.eventqr.features.staff.configureStaffBottomNav
 import com.thedavelopers.eventqr.features.staff.scanner.ScannerActivity
 import com.thedavelopers.eventqr.features.transactions.TransactionLogAdapter
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse
@@ -84,7 +82,17 @@ open class StaffDashboardActivity : AppCompatActivity(), StaffDashboardContract.
             startActivity(Intent(this, EventRegistrationsActivity::class.java))
         }
 
-        configureStaffBottomNav(StaffBottomNavItem.DASHBOARD)
+        findViewById<View>(R.id.navScanner).setOnClickListener {
+            startActivity(Intent(this, ScannerActivity::class.java))
+        }
+
+        findViewById<View>(R.id.navLogs).setOnClickListener {
+            startActivity(Intent(this, StaffTransactionsActivity::class.java))
+        }
+
+        findViewById<View>(R.id.navProfile).setOnClickListener {
+            startActivity(Intent(this, StaffProfileActivity::class.java))
+        }
 
         swipeRefreshLayout = findViewById(R.id.swipeRefreshDashboard)
         swipeRefreshLayout.setColorSchemeResources(R.color.eventqr_purple)

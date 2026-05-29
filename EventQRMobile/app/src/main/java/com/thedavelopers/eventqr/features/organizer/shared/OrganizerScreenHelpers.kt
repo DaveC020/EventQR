@@ -36,7 +36,6 @@ internal const val NAV_EVENTS = "Events"
 internal const val NAV_ATTENDEES = "Attendees"
 internal const val NAV_LOGS = "Logs"
 internal const val NAV_REPORTS = "Reports"
-internal const val NAV_MORE = "More"
 
 internal val PRIMARY = Color.parseColor("#25215F")
 internal val PURPLE = Color.parseColor("#5B25C9")
@@ -383,21 +382,6 @@ internal fun AppCompatActivity.organizerShell(
     }
     headerRow.addView(titleBox)
 
-    if (darkHeader) {
-        headerRow.addView(text("Logout", 11, true, Color.WHITE).apply {
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            background = rounded(Color.parseColor("#33FFFFFF"), 8, null, density = resources.displayMetrics.density)
-            setOnClickListener {
-                com.thedavelopers.eventqr.core.session.SessionManager(this@organizerShell).clearSession()
-                val intent = Intent(this@organizerShell, com.thedavelopers.eventqr.features.auth.login.LoginActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
-            }
-        })
-        headerRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-    }
-
     if (topRightLabel != null) {
         val topBtn = Button(this).apply {
             text = topRightLabel
@@ -463,15 +447,6 @@ internal fun AppCompatActivity.bottomNav(selected: String): LinearLayout {
         }),
         Triple(NAV_REPORTS, com.thedavelopers.eventqr.R.drawable.ic_search, {
             if (this@bottomNav !is OrganizerOverallReportsActivity) openOrganizerPage(OrganizerOverallReportsActivity::class.java)
-        }),
-        Triple(NAV_MORE, com.thedavelopers.eventqr.R.drawable.ic_nav_profile, {
-            if (selected != NAV_MORE) {
-                openOrganizerPlaceholder(
-                    title = "More",
-                    message = "Additional organizer tools will be available in a follow-up release.",
-                    selectedNav = NAV_MORE,
-                )
-            }
         }),
     )
     items.forEach { (label, iconRes, onClick) ->
