@@ -466,7 +466,7 @@
         android:background="@drawable/bg_bottom_nav"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingHorizontal="38dp">
+        android:paddingHorizontal="20dp">
 
         <LinearLayout
             android:id="@+id/navDashboard"
@@ -477,21 +477,21 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="39dp"
-                android:layout_height="39dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:background="@drawable/bg_nav_icon_active"
                 android:contentDescription="Dashboard"
-                android:padding="9dp"
+                android:padding="8dp"
                 android:src="@drawable/ic_nav_home"
                 android:tint="#FFFFFF" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
+                android:layout_marginTop="6dp"
                 android:text="Dashboard"
-                android:textColor="#333333"
-                android:textSize="13sp"
+                android:textColor="#312E81"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -504,8 +504,8 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="39dp"
-                android:layout_height="39dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:background="@drawable/bg_nav_icon_inactive"
                 android:contentDescription="Events"
                 android:padding="8dp"
@@ -515,10 +515,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
+                android:layout_marginTop="6dp"
                 android:text="Events"
-                android:textColor="#333333"
-                android:textSize="13sp"
+                android:textColor="#6B7280"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -544,8 +544,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
                 android:text="Rewards"
-                android:textColor="#333333"
-                android:textSize="13sp"
+                android:textColor="#6B7280"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -571,8 +571,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
                 android:text="Profile"
-                android:textColor="#333333"
-                android:textSize="13sp"
+                android:textColor="#6B7280"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>

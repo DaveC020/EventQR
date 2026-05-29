@@ -49,10 +49,12 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <TextView
+    <ImageButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="›"
-        android:textColor="@color/eventqr_muted"
-        android:textSize="24sp" />
+        android:src="@drawable/back_btn"
+        android:scaleX="-1"
+        android:background="name"
+        android:layout_margin="5dp"
+        android:padding="5dp"/>
 </LinearLayout>
