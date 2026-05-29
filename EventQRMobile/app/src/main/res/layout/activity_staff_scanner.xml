@@ -220,7 +220,7 @@
                 app:iconGravity="textStart"
                 app:iconPadding="12dp"
                 app:iconSize="24dp"
-                android:text="Select Scan Purpose First"
+                android:text="Manually Scan QR Code"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="17sp"

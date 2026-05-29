@@ -18,8 +18,10 @@ import com.thedavelopers.eventqr.core.api.dto.EventRequestStatus
 import com.thedavelopers.eventqr.core.api.dto.EventStatus
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.RoleMapper
+import com.thedavelopers.eventqr.features.admin.AdminBottomNavItem
 import com.thedavelopers.eventqr.features.admin.AdminEventApprovalBackendActivity
 import com.thedavelopers.eventqr.features.admin.AdminRepository
+import com.thedavelopers.eventqr.features.admin.configureAdminBottomNav
 import com.thedavelopers.eventqr.features.admin.logs.AdminAuditLogsActivity
 import com.thedavelopers.eventqr.features.admin.notifications.AdminNotificationManagementActivity
 import com.thedavelopers.eventqr.features.admin.users.AdminAccountManagementActivity
@@ -51,6 +53,7 @@ class AdminDashboardActivity : AppCompatActivity() {
         bindViews()
         setupSwipeRefresh()
         bindActions()
+        configureAdminBottomNav(AdminBottomNavItem.DASHBOARD)
         setupPortalSwitcher()
         textAdminName.text = sessionManager.getFullName().orEmpty().ifBlank { "Admin User" }
     }
@@ -96,20 +99,6 @@ class AdminDashboardActivity : AppCompatActivity() {
         }
         cardPendingAlert.setOnClickListener { openRequests() }
 
-        findViewById<View>(R.id.navDashboard).setOnClickListener {
-            // current tab
-        }
-        findViewById<View>(R.id.navRequests).setOnClickListener {
-            openRequests()
-        }
-        findViewById<View>(R.id.navAccounts).setOnClickListener {
-            startActivity(Intent(this, AdminAccountManagementActivity::class.java))
-            finish()
-        }
-        findViewById<View>(R.id.navLogs).setOnClickListener {
-            startActivity(Intent(this, AdminAuditLogsActivity::class.java))
-            finish()
-        }
     }
 
     private fun setupPortalSwitcher() {

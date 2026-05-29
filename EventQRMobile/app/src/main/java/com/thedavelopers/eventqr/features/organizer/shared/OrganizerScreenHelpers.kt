@@ -36,6 +36,7 @@ internal const val NAV_EVENTS = "Events"
 internal const val NAV_ATTENDEES = "Attendees"
 internal const val NAV_LOGS = "Logs"
 internal const val NAV_REPORTS = "Reports"
+internal const val NAV_MORE = "More"
 
 internal val PRIMARY = Color.parseColor("#25215F")
 internal val PURPLE = Color.parseColor("#5B25C9")
@@ -462,6 +463,15 @@ internal fun AppCompatActivity.bottomNav(selected: String): LinearLayout {
         }),
         Triple(NAV_REPORTS, com.thedavelopers.eventqr.R.drawable.ic_search, {
             if (this@bottomNav !is OrganizerOverallReportsActivity) openOrganizerPage(OrganizerOverallReportsActivity::class.java)
+        }),
+        Triple(NAV_MORE, com.thedavelopers.eventqr.R.drawable.ic_nav_profile, {
+            if (selected != NAV_MORE) {
+                openOrganizerPlaceholder(
+                    title = "More",
+                    message = "Additional organizer tools will be available in a follow-up release.",
+                    selectedNav = NAV_MORE,
+                )
+            }
         }),
     )
     items.forEach { (label, iconRes, onClick) ->

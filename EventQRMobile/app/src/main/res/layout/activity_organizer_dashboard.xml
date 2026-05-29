@@ -716,5 +716,31 @@
                 android:textColor="#9CA3AF"
                 android:textSize="11sp" />
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navMore"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="39dp"
+                android:layout_height="39dp"
+                android:background="@drawable/bg_nav_icon_inactive"
+                android:contentDescription="More"
+                android:padding="8dp"
+                android:src="@drawable/ic_nav_profile"
+                app:tint="#9CA3AF" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="More"
+                android:textColor="#9CA3AF"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

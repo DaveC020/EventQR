@@ -25,12 +25,14 @@ import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.features.staff.EventSpinnerOption
+import com.thedavelopers.eventqr.features.staff.StaffBottomNavItem
 import com.thedavelopers.eventqr.features.staff.StaffDashboardActivity
 import com.thedavelopers.eventqr.features.staff.StaffProfileActivity
 import com.thedavelopers.eventqr.features.staff.StaffRepository
 import com.thedavelopers.eventqr.features.staff.StaffTransactionsActivity
 import com.thedavelopers.eventqr.features.staff.StaffScreenExtras
 import com.thedavelopers.eventqr.features.staff.StaffCameraScannerActivity
+import com.thedavelopers.eventqr.features.staff.configureStaffBottomNav
 import com.thedavelopers.eventqr.features.staff.model.dto.ScanVerificationResponse
 import com.thedavelopers.eventqr.features.staff.result.StaffScanResultActivity
 import com.thedavelopers.eventqr.features.transactions.TransactionAdapter
@@ -115,18 +117,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         adapter = TransactionAdapter()
         staffUserId = SessionManager(this).getUserId()
 
-        findViewById<View>(R.id.navDashboard)?.setOnClickListener {
-            startActivity(Intent(this, StaffDashboardActivity::class.java))
-            finish()
-        }
-
-        findViewById<View>(R.id.navLogs)?.setOnClickListener {
-            startActivity(Intent(this, StaffTransactionsActivity::class.java))
-        }
-
-        findViewById<View>(R.id.navProfile)?.setOnClickListener {
-            startActivity(Intent(this, StaffProfileActivity::class.java))
-        }
+        configureStaffBottomNav(StaffBottomNavItem.SCAN)
 
         findViewById<RecyclerView>(R.id.recyclerScannerResults).apply {
             layoutManager = LinearLayoutManager(this@ScannerActivity)

@@ -22,8 +22,8 @@ open class EventReportsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = OrganizerRepository(this)
-        val eventId = intentEventId() ?: return showMissingEventScreen("Event Reports")
-        selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents(), eventId) ?: return showMissingEventScreen("Event Reports")
+        val eventId = intentEventId() ?: return openOrganizerPage(ManageEventsActivity::class.java)
+        selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents(), eventId) ?: return openOrganizerPage(ManageEventsActivity::class.java)
         val content = organizerShell("Event Reports", selectedEvent.title, NAV_REPORTS, topRightLabel = "Export") {
             // TODO: Connect to backend export/download implementation.
             Toast.makeText(this, "Export/download placeholder", Toast.LENGTH_SHORT).show()

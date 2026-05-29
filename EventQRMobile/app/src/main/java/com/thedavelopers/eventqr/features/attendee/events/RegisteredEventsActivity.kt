@@ -9,6 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.thedavelopers.eventqr.R
+import com.thedavelopers.eventqr.features.attendee.AttendeeBottomNavItem
+import com.thedavelopers.eventqr.features.attendee.configureAttendeeBottomNav
 import com.thedavelopers.eventqr.features.registrations.RegisteredEventAdapter
 import com.thedavelopers.eventqr.features.registrations.model.dto.RegistrationResponse
 import java.time.Instant
@@ -27,6 +29,7 @@ open class RegisteredEventsActivity : AppCompatActivity(), RegisteredEventsContr
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_user_registered_events)
+        configureAttendeeBottomNav(AttendeeBottomNavItem.MY_EVENTS)
 
         presenter = RegisteredEventsPresenter(this, AttendeeRepository(this))
         loadingView = findViewById(R.id.txtRegisteredEventsEmpty)

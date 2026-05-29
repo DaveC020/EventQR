@@ -15,7 +15,8 @@ import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.RoleMapper
-import com.thedavelopers.eventqr.features.staff.scanner.ScannerActivity
+import com.thedavelopers.eventqr.features.staff.StaffBottomNavItem
+import com.thedavelopers.eventqr.features.staff.configureStaffBottomNav
 import com.thedavelopers.eventqr.features.transactions.TransactionLogAdapter
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse
 import kotlinx.coroutines.launch
@@ -45,7 +46,7 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
             adapter = this@StaffTransactionsActivity.adapter
         }
 
-        setupBottomNav()
+        configureStaffBottomNav(StaffBottomNavItem.TRANSACTIONS)
 
         selectedEventId = intent.getStringExtra(StaffScreenExtras.EXTRA_EVENT_ID).orEmpty()
 
@@ -75,23 +76,6 @@ open class StaffTransactionsActivity : AppCompatActivity(), StaffTransactionsCon
         findViewById<Button>(R.id.btnLoadStaffTransactions).setOnClickListener {
             selectedEventId = findViewById<EditText>(R.id.edtStaffTransactionsEventId).text.toString()
             presenter.load(selectedEventId)
-        }
-    }
-
-    private fun setupBottomNav() {
-        findViewById<View>(R.id.navDashboard)?.setOnClickListener {
-            startActivity(Intent(this, StaffDashboardActivity::class.java))
-            finish()
-        }
-
-        findViewById<View>(R.id.navScanner)?.setOnClickListener {
-            startActivity(Intent(this, ScannerActivity::class.java))
-            finish()
-        }
-
-        findViewById<View>(R.id.navProfile)?.setOnClickListener {
-            startActivity(Intent(this, StaffProfileActivity::class.java))
-            finish()
         }
     }
 

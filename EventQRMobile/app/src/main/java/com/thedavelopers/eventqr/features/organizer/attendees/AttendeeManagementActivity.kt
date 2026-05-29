@@ -26,8 +26,8 @@ open class AttendeeManagementActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = OrganizerRepository(this)
-        val eventId = intentEventId() ?: return showMissingEventScreen("Attendee Management")
-        selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents(), eventId) ?: return showMissingEventScreen("Attendee Management")
+        val eventId = intentEventId() ?: return openOrganizerPage(ManageEventsActivity::class.java)
+        selectedEvent = resolveSelectedEvent(repository.getApprovedOrganizerEvents(), eventId) ?: return openOrganizerPage(ManageEventsActivity::class.java)
         val content = organizerShell("Attendee Management", selectedEvent.title, NAV_ATTENDEES)
         val approved = repository.getApprovedOrganizerEvents().approvedOnly()
         if (approved.size > 1) content.addView(eventSelector(repository.getApprovedOrganizerEvents(), selectedEvent.id) {

@@ -125,7 +125,7 @@ class AdminEventApprovalBackendActivity : AppCompatActivity() {
         lifecycleScope.launch {
             when (val result = repository.getCurrentUser()) {
                 is NetworkResult.Success -> {
-                    if (result.data.role != AccountRole.ADMIN) {
+                    if (result.data.role != AccountRole.ADMIN && result.data.role != AccountRole.SUPER_ADMIN) {
                         showError("Admin access required.", showRetry = false)
                         Toast.makeText(this@AdminEventApprovalBackendActivity, "Admin access required.", Toast.LENGTH_SHORT).show()
                     } else {

@@ -62,6 +62,13 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
                 selectedNav = NAV_REPORTS,
             )
         }
+        findViewById<View>(R.id.navMore).setOnClickListener {
+            openOrganizerPlaceholder(
+                title = "More",
+                message = "Additional organizer tools will be available in a follow-up release.",
+                selectedNav = NAV_MORE,
+            )
+        }
 
         findViewById<View>(R.id.btnManageMyEvents).setOnClickListener {
             openOrganizerPage(ManageEventsActivity::class.java)

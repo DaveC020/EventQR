@@ -132,7 +132,7 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/layoutBottomNav"
         app:layout_constraintTop_toBottomOf="@id/filterDivider"
         tools:listitem="@layout/item_registered_event" />
 
@@ -150,5 +150,43 @@
         app:layout_constraintEnd_toEndOf="@id/recyclerRegisteredEvents"
         app:layout_constraintStart_toStartOf="@id/recyclerRegisteredEvents"
         app:layout_constraintTop_toTopOf="@id/recyclerRegisteredEvents" />
+
+    <LinearLayout
+        android:id="@+id/layoutBottomNav"
+        android:layout_width="0dp"
+        android:layout_height="76dp"
+        android:background="@drawable/bg_bottom_nav"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="38dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout android:id="@+id/navDashboard" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+            <ImageView android:layout_width="39dp" android:layout_height="39dp" android:background="@drawable/bg_nav_icon_inactive" android:contentDescription="Dashboard" android:padding="8dp" android:src="@drawable/ic_nav_home" android:tint="#000000" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Dashboard" android:textColor="#333333" android:textSize="13sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/navEvents" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+            <ImageView android:layout_width="39dp" android:layout_height="39dp" android:background="@drawable/bg_nav_icon_inactive" android:contentDescription="Events" android:padding="8dp" android:src="@drawable/ic_nav_calendar" android:tint="#000000" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Events" android:textColor="#333333" android:textSize="13sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/navMyEvents" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+            <ImageView android:layout_width="39dp" android:layout_height="39dp" android:background="@drawable/bg_nav_icon_active" android:contentDescription="My Events" android:padding="8dp" android:src="@drawable/ic_nav_calendar" android:tint="#FFFFFF" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="My Events" android:textColor="#312E81" android:textSize="13sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/navRewards" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+            <ImageView android:layout_width="39dp" android:layout_height="39dp" android:background="@drawable/bg_nav_icon_inactive" android:contentDescription="Rewards" android:padding="8dp" android:src="@drawable/ic_nav_gift" android:tint="#000000" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Rewards" android:textColor="#333333" android:textSize="13sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/navProfile" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+            <ImageView android:layout_width="39dp" android:layout_height="39dp" android:background="@drawable/bg_nav_icon_inactive" android:contentDescription="Profile" android:padding="8dp" android:src="@drawable/ic_nav_profile" android:tint="#000000" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Profile" android:textColor="#333333" android:textSize="13sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
