@@ -52,22 +52,18 @@ public class FileStorageService {
     }
 
     public StoredFileResponse find(UUID fileId) {
+        Path path = filePath(fileId);
+        if (!Files.exists(path)) {
+            throw new ResourceNotFoundException("File not found: " + fileId);
+        }
+
         try {
-            Path path = filePath(fileId);
-            if (!Files.exists(path)) {
-                throw new ResourceNotFoundException("File not found: " + fileId);
-            }
             byte[] content = Files.readAllBytes(path);
             StoredFileRecord record = new StoredFileRecord(fileId, null, null, fileId.toString(), null, content.length, Instant.now());
             return record.toResponse("AVAILABLE", content);
         } catch (IOException exception) {
             throw new ResourceNotFoundException("File not found: " + fileId);
         }
-    }
-
-    public StoredFileContent readContent(UUID fileId) {
-        FileStorageRecord record = require(fileId);
-        return new StoredFileContent(record.content, record.contentType);
     }
 
     public StoredFileResponse delete(UUID fileId) {
