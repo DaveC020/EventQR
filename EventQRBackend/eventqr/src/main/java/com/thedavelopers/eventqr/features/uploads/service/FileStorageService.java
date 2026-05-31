@@ -66,6 +66,20 @@ public class FileStorageService {
         }
     }
 
+    public StoredFileContent readContent(UUID fileId) {
+        Path path = filePath(fileId);
+        if (!Files.exists(path)) {
+            throw new ResourceNotFoundException("File not found: " + fileId);
+        }
+
+        try {
+            byte[] content = Files.readAllBytes(path);
+            return new StoredFileContent(content, MediaTypeDetector.detect(content));
+        } catch (IOException exception) {
+            throw new ResourceNotFoundException("File not found: " + fileId);
+        }
+    }
+
     public StoredFileResponse delete(UUID fileId) {
         StoredFileResponse existing = find(fileId);
         try {
@@ -91,6 +105,9 @@ public class FileStorageService {
         }
     }
 
+    public record StoredFileContent(byte[] content, String contentType) {
+    }
+
     private record StoredFileRecord(UUID fileId, UUID ownerId, String purpose, String fileName,
                                     String contentType, long size, Instant storedAt) {
         StoredFileResponse toResponse(String status, byte[] content) {
@@ -101,5 +118,24 @@ public class FileStorageService {
 
     private static String encode(byte[] content) {
         return Base64.getEncoder().encodeToString(content == null ? new byte[0] : content);
+    }
+
+    private static class MediaTypeDetector {
+        private static String detect(byte[] content) {
+            if (content == null || content.length < 4) {
+                return "application/octet-stream";
+            }
+            if ((content[0] & 0xFF) == 0xFF && (content[1] & 0xFF) == 0xD8) {
+                return "image/jpeg";
+            }
+            if ((content[0] & 0xFF) == 0x89 && content[1] == 0x50 && content[2] == 0x4E && content[3] == 0x47) {
+                return "image/png";
+            }
+            if (content.length >= 12 && content[0] == 0x52 && content[1] == 0x49 && content[2] == 0x46 && content[3] == 0x46
+                    && content[8] == 0x57 && content[9] == 0x45 && content[10] == 0x42 && content[11] == 0x50) {
+                return "image/webp";
+            }
+            return "application/octet-stream";
+        }
     }
 }
