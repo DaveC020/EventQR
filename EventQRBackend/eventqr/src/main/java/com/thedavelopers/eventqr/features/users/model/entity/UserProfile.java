@@ -30,6 +30,9 @@ public class UserProfile extends BaseEntity {
     @Column(name = "avatar_file_id")
     private String avatarFileId;
 
+    @Column(name = "avatar_path")
+    private String avatarPath;
+
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

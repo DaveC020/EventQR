@@ -20,6 +20,7 @@ data class UserResponse(
     val role: AccountRole,
     val status: AccountStatus,
     val avatarFileId: String? = null,
+    val avatarPath: String? = null,
 )
 
 data class ProfileUpdateRequest(

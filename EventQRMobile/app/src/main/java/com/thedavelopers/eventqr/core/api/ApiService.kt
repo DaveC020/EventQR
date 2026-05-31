@@ -69,6 +69,8 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
 
 interface ApiService {
     @POST("auth/login")
@@ -104,6 +106,10 @@ interface ApiService {
 
     @GET("files/{fileId}")
     suspend fun getStoredFile(@Path("fileId") fileId: String): ApiResponse<StoredFileResponse>
+
+    @Streaming
+    @GET
+    suspend fun downloadAvatar(@Url avatarPath: String): ResponseBody
 
     @POST("users")
     suspend fun createUser(@Body request: UserRequest): ApiResponse<UserResponse>

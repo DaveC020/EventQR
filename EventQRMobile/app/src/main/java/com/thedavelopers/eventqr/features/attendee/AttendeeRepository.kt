@@ -21,6 +21,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 
 class AttendeeRepository(context: Context) {
@@ -38,6 +39,22 @@ class AttendeeRepository(context: Context) {
         val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("file", file.name, requestBody)
         apiService.uploadAvatar(part)
+    }
+    suspend fun downloadAvatar(avatarPath: String): NetworkResult<ByteArray> = withContext(Dispatchers.IO) {
+        runCatching {
+            apiService.downloadAvatar(avatarPath).bytes()
+        }.fold(
+            onSuccess = { bytes ->
+                if (bytes.isNotEmpty()) {
+                    NetworkResult.Success(bytes)
+                } else {
+                    NetworkResult.Error("Avatar image is empty")
+                }
+            },
+            onFailure = { throwable ->
+                NetworkResult.Error(throwable.message ?: "Unable to load avatar image", throwable)
+            }
+        )
     }
     suspend fun getStoredFile(fileId: String) = safeApiCall { apiService.getStoredFile(fileId) }
     suspend fun createRegistration(request: RegistrationRequest) = safeApiCall { apiService.createRegistration(request) }

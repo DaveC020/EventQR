@@ -65,6 +65,11 @@ public class FileStorageService {
         }
     }
 
+    public StoredFileContent readContent(UUID fileId) {
+        FileStorageRecord record = require(fileId);
+        return new StoredFileContent(record.content, record.contentType);
+    }
+
     public StoredFileResponse delete(UUID fileId) {
         StoredFileResponse existing = find(fileId);
         try {

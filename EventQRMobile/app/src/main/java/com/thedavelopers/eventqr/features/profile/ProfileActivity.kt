@@ -1,5 +1,6 @@
 package com.thedavelopers.eventqr.features.profile
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
@@ -70,7 +71,7 @@ class ProfileActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity() {
                     sessionManager.saveRole(user.role)
                     sessionManager.saveAvatarFileId(user.avatarFileId)
                     renderProfile()
-                    renderAvatarFromStoredFile(user.avatarFileId)
+                    renderAvatarFromRemotePath(resolveAvatarPath(user.avatarPath, user.avatarFileId))
                 }
                 is NetworkResult.Error -> showErrorState(result.message.ifBlank { "Unable to load profile." })
                 else -> Unit
@@ -87,8 +88,8 @@ class ProfileActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity() {
         findViewById<TextView>(R.id.txtPhone).text = sessionManager.getPhone() ?: "N/A"
     }
 
-    private fun renderAvatarFromStoredFile(avatarFileId: String?) {
-        if (avatarFileId.isNullOrBlank()) {
+    private fun renderAvatarFromRemotePath(avatarPath: String?) {
+        if (avatarPath.isNullOrBlank()) {
             imgProfileAvatar.setImageDrawable(null)
             imgProfileAvatar.visibility = View.GONE
             imgProfileAvatarPlaceholder.visibility = View.VISIBLE
@@ -96,11 +97,10 @@ class ProfileActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity() {
         }
 
         lifecycleScope.launch {
-            when (val fileResult = repository.getStoredFile(avatarFileId)) {
+            when (val fileResult = repository.downloadAvatar(avatarPath)) {
                 is NetworkResult.Success -> {
-                    val encoded = fileResult.data.contentBase64.orEmpty()
                     val bitmap = runCatching {
-                        val bytes = Base64.getDecoder().decode(encoded)
+                        val bytes = fileResult.data
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     }.onFailure {
                         Log.w("ProfileActivity", "Unable to decode profile avatar.", it)
@@ -124,6 +124,11 @@ class ProfileActivity : com.thedavelopers.eventqr.core.ui.BaseNavActivity() {
                 }
             }
         }
+    }
+
+    private fun resolveAvatarPath(avatarPath: String?, avatarFileId: String?): String? {
+        return avatarPath?.takeIf { it.isNotBlank() }
+            ?: avatarFileId?.takeIf { it.isNotBlank() }?.let { "files/$it/content" }
     }
 
     private fun setLoadingState(loading: Boolean) {
