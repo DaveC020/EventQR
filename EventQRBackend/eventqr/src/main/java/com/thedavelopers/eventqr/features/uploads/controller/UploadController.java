@@ -3,6 +3,7 @@ package com.thedavelopers.eventqr.features.uploads.controller;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +45,18 @@ public class UploadController {
     @GetMapping("/files/{fileId}")
     public ResponseEntity<ApiResponse<StoredFileResponse>> getFile(@PathVariable UUID fileId) {
         return ResponseEntity.ok(ApiResponse.success(fileStorageService.find(fileId)));
+    }
+
+    @GetMapping(value = "/files/{fileId}/content", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<byte[]> getFileContent(@PathVariable UUID fileId) {
+        StoredFileResponse file = fileStorageService.find(fileId);
+        FileStorageService.StoredFileContent content = fileStorageService.readContent(fileId);
+        MediaType mediaType = file.contentType() == null || file.contentType().isBlank()
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(file.contentType());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .body(content.content());
     }
 
     @DeleteMapping("/files/{fileId}")

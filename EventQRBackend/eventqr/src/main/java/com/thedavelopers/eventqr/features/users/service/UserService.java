@@ -66,7 +66,9 @@ public class UserService implements AttendeeDirectoryPort {
 
     public UserResponse updateAvatar(UUID userId, String avatarFileId) {
         UserProfile userProfile = requireUser(userId);
-        userProfile.setAvatarFileId(avatarFileId == null || avatarFileId.isBlank() ? null : avatarFileId.trim());
+        String normalizedAvatarFileId = avatarFileId == null || avatarFileId.isBlank() ? null : avatarFileId.trim();
+        userProfile.setAvatarFileId(normalizedAvatarFileId);
+        userProfile.setAvatarPath(normalizedAvatarFileId == null ? null : "files/" + normalizedAvatarFileId + "/content");
         return toResponse(userProfileRepository.save(userProfile));
     }
 
@@ -146,7 +148,18 @@ public class UserService implements AttendeeDirectoryPort {
 
     private UserResponse toResponse(UserProfile userProfile) {
         return new UserResponse(userProfile.getId(), userProfile.getEmail(), userProfile.getFullName(),
-                userProfile.getPhoneNumber(), userProfile.getRole(), userProfile.getStatus(), userProfile.getAvatarFileId());
+                userProfile.getPhoneNumber(), userProfile.getRole(), userProfile.getStatus(), userProfile.getAvatarFileId(),
+                resolveAvatarPath(userProfile));
+    }
+
+    private String resolveAvatarPath(UserProfile userProfile) {
+        if (userProfile.getAvatarPath() != null && !userProfile.getAvatarPath().isBlank()) {
+            return userProfile.getAvatarPath().trim();
+        }
+        if (userProfile.getAvatarFileId() == null || userProfile.getAvatarFileId().isBlank()) {
+            return null;
+        }
+        return "files/" + userProfile.getAvatarFileId().trim() + "/content";
     }
 
     private UserProfile requireUser(UUID userId) {
