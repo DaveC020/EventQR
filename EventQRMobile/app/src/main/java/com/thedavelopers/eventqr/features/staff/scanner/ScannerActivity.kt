@@ -3,15 +3,17 @@ package com.thedavelopers.eventqr.features.staff.scanner
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AdapterView
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -22,21 +24,25 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.dto.AccountRole
+import com.thedavelopers.eventqr.core.api.dto.ScanPurposeCode
 import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.RoleMapper
+import com.thedavelopers.eventqr.features.staff.EventRegistrationsActivity
 import com.thedavelopers.eventqr.features.staff.EventSpinnerOption
-import com.thedavelopers.eventqr.features.staff.StaffDashboardActivity
-import com.thedavelopers.eventqr.features.staff.StaffProfileActivity
-import com.thedavelopers.eventqr.features.staff.StaffRepository
-import com.thedavelopers.eventqr.features.staff.StaffTransactionsActivity
-import com.thedavelopers.eventqr.features.staff.StaffScreenExtras
 import com.thedavelopers.eventqr.features.staff.StaffCameraScannerActivity
+import com.thedavelopers.eventqr.features.staff.StaffDashboardActivity
+import com.thedavelopers.eventqr.features.staff.StaffRepository
+import com.thedavelopers.eventqr.features.staff.StaffScreenExtras
+import com.thedavelopers.eventqr.features.staff.StaffTransactionsActivity
 import com.thedavelopers.eventqr.features.staff.model.dto.ScanVerificationResponse
 import com.thedavelopers.eventqr.features.staff.result.StaffScanResultActivity
 import com.thedavelopers.eventqr.features.transactions.TransactionAdapter
 import com.thedavelopers.eventqr.features.transactions.model.dto.TransactionResponse
 import com.thedavelopers.eventqr.features.scanpurposes.model.dto.ScanPurposeResponse
 import org.json.JSONObject
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     private lateinit var presenter: ScannerPresenter
@@ -46,6 +52,13 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     private lateinit var notesInput: EditText
     private lateinit var resultText: TextView
     private lateinit var adapter: TransactionAdapter
+    private lateinit var selectedEventTitle: TextView
+    private lateinit var selectedEventDate: TextView
+    private lateinit var selectedPurposeCard: LinearLayout
+    private lateinit var selectedPurposeName: TextView
+    private lateinit var selectedPurposePoints: TextView
+    private lateinit var purposeChevron: TextView
+    private lateinit var purposeDropdown: LinearLayout
     private var staffUserId: String? = null
 
     private val eventOptions = mutableListOf<EventSpinnerOption>()
@@ -54,9 +67,12 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     private var lastSubmittedSignature: String? = null
     private var lastSubmittedAtMs: Long = 0L
     private var submitInFlight: Boolean = false
+    private var isPurposeDropdownOpen = false
 
     private val tag = "StaffQrScanner"
     private val duplicateWindowMs = 2_000L
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH)
+    private val manilaZone: ZoneId = ZoneId.of("Asia/Manila")
 
     private val cameraScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != RESULT_OK) {
@@ -112,6 +128,13 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         qrInput = findViewById(R.id.edtScannerQr)
         notesInput = findViewById(R.id.edtScannerNotes)
         resultText = findViewById(R.id.txtScannerResult)
+        selectedEventTitle = findViewById(R.id.txtScannerEventTitle)
+        selectedEventDate = findViewById(R.id.txtScannerEventDate)
+        selectedPurposeCard = findViewById(R.id.cardSelectedPurpose)
+        selectedPurposeName = findViewById(R.id.txtSelectedPurposeName)
+        selectedPurposePoints = findViewById(R.id.txtSelectedPurposePoints)
+        purposeChevron = findViewById(R.id.txtPurposeChevron)
+        purposeDropdown = findViewById(R.id.layoutPurposeDropdown)
         adapter = TransactionAdapter()
         staffUserId = SessionManager(this).getUserId()
 
@@ -120,12 +143,20 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
             finish()
         }
 
-        findViewById<View>(R.id.navLogs)?.setOnClickListener {
-            startActivity(Intent(this, StaffTransactionsActivity::class.java))
+        findViewById<View>(R.id.navEvents)?.setOnClickListener {
+            startActivity(Intent(this, EventRegistrationsActivity::class.java).apply {
+                selectedEvent()?.id?.let { putExtra(StaffScreenExtras.EXTRA_EVENT_ID, it) }
+            })
         }
 
-        findViewById<View>(R.id.navProfile)?.setOnClickListener {
-            startActivity(Intent(this, StaffProfileActivity::class.java))
+        findViewById<View>(R.id.navLogs)?.setOnClickListener {
+            startActivity(Intent(this, StaffTransactionsActivity::class.java).apply {
+                selectedEvent()?.id?.let { putExtra(StaffScreenExtras.EXTRA_EVENT_ID, it) }
+            })
+        }
+
+        selectedPurposeCard.setOnClickListener {
+            setPurposeDropdownOpen(!isPurposeDropdownOpen)
         }
 
         findViewById<RecyclerView>(R.id.recyclerScannerResults).apply {
@@ -160,6 +191,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         eventSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         eventSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                bindSelectedEventHeader()
                 loadSelectedPurposes()
             }
 
@@ -169,27 +201,34 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
             val index = items.indexOfFirst { it.id == preselectedEventId }
             if (index >= 0) eventSpinner.setSelection(index)
         }
+        bindSelectedEventHeader()
         loadSelectedPurposes()
+        findViewById<TextView>(R.id.txtScannerEmptyState).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 
     override fun showPurposes(items: List<ScanPurposeResponse>) {
         val activePurposes = items.filter { it.active }
         val selectedEventId = eventOptions.getOrNull(eventSpinner.selectedItemPosition)?.id
         val labels = activePurposes.map { it.name }
-        Log.d(
-            tag,
-            "eventId=$selectedEventId loadedScanPurposeCount=${items.size} displayedOptionLabels=$labels"
-        )
-        
+        Log.d(tag, "eventId=$selectedEventId loadedScanPurposeCount=${items.size} displayedOptionLabels=$labels")
+
         purposeOptions.clear()
         purposeOptions.addAll(activePurposes)
-        
+
         if (activePurposes.isEmpty()) {
             purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("No scan purposes enabled for this event."))
             purposeSpinner.isEnabled = false
+            selectedPurposeName.text = "No scan purposes enabled"
+            selectedPurposePoints.text = "Configure scan purposes first"
+            selectedPurposePoints.setTextColor(0xFF6B7280.toInt())
+            purposeDropdown.removeAllViews()
+            setPurposeDropdownOpen(false)
         } else {
             purposeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, activePurposes.map { it.name })
             purposeSpinner.isEnabled = true
+            purposeSpinner.setSelection(0, false)
+            bindSelectedPurposeHeader()
+            renderPurposeDropdown()
         }
     }
 
@@ -199,10 +238,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
 
     override fun showVerificationResult(result: ScanVerificationResponse) {
         submitInFlight = false
-        Log.d(
-            tag,
-            "backend verification result=SUCCESS eventId=${result.eventId} scanPurposeId=${result.scanPurposeId} message=${result.message}"
-        )
+        Log.d(tag, "backend verification result=SUCCESS eventId=${result.eventId} scanPurposeId=${result.scanPurposeId} message=${result.message}")
         resultText.text = result.message
         openVerificationResult(result)
     }
@@ -225,10 +261,100 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     }
 
     private fun loadSelectedPurposes() {
-        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        val selectedEvent = selectedEvent()
         if (selectedEvent != null) {
             presenter.loadPurposes(selectedEvent.id)
         }
+    }
+
+    private fun selectedEvent(): EventSpinnerOption? = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+
+    private fun bindSelectedEventHeader() {
+        val event = selectedEvent()
+        selectedEventTitle.text = event?.label ?: "No assigned event"
+        selectedEventDate.text = event?.eventStartAt?.atZone(manilaZone)?.format(dateFormatter).orEmpty()
+    }
+
+    private fun bindSelectedPurposeHeader() {
+        val purpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
+        selectedPurposeName.text = purpose?.displayName().orEmpty().ifBlank { "Select purpose" }
+        selectedPurposePoints.text = purpose?.pointsLabel().orEmpty()
+        selectedPurposePoints.setTextColor(0xFF4F46E5.toInt())
+    }
+
+    private fun renderPurposeDropdown() {
+        purposeDropdown.removeAllViews()
+        purposeOptions.forEachIndexed { index, purpose ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                setBackgroundColor(if (index == purposeSpinner.selectedItemPosition) Color.parseColor("#EEF2FF") else Color.WHITE)
+                setOnClickListener {
+                    purposeSpinner.setSelection(index, false)
+                    bindSelectedPurposeHeader()
+                    renderPurposeDropdown()
+                    setPurposeDropdownOpen(false)
+                }
+            }
+            val textColumn = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            textColumn.addView(TextView(this).apply {
+                text = purpose.displayName()
+                setTextColor(if (index == purposeSpinner.selectedItemPosition) 0xFF4F46E5.toInt() else 0xFF111827.toInt())
+                textSize = 14f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            textColumn.addView(TextView(this).apply {
+                text = purpose.description?.takeIf { it.isNotBlank() } ?: purpose.defaultDescription()
+                setTextColor(0xFF6B7280.toInt())
+                textSize = 13f
+            })
+            row.addView(textColumn)
+            row.addView(TextView(this).apply {
+                text = purpose.pointsLabel()
+                setTextColor(0xFF10B981.toInt())
+                textSize = 13f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            purposeDropdown.addView(row)
+        }
+    }
+
+    private fun setPurposeDropdownOpen(open: Boolean) {
+        isPurposeDropdownOpen = open
+        purposeDropdown.visibility = if (open) View.VISIBLE else View.GONE
+        purposeChevron.text = if (open) "⌃" else "⌄"
+    }
+
+    private fun ScanPurposeResponse.displayName(): String = when (code) {
+        ScanPurposeCode.ENTRY -> "Event Entry"
+        ScanPurposeCode.ATTENDANCE -> "Session Attendance"
+        ScanPurposeCode.BOOTH_VISIT -> "Booth Visit"
+        ScanPurposeCode.BENEFIT_CLAIM -> "Benefit Claim"
+        ScanPurposeCode.REWARD_REDEMPTION, ScanPurposeCode.REWARD_REDEMPTION_SCAN -> "Reward Redemption"
+        ScanPurposeCode.EXIT -> "Event Exit"
+        else -> name
+    }
+
+    private fun ScanPurposeResponse.defaultDescription(): String = when (code) {
+        ScanPurposeCode.ENTRY -> "Record attendee entry"
+        ScanPurposeCode.ATTENDANCE -> "Record session attendance"
+        ScanPurposeCode.BOOTH_VISIT -> "Track booth/exhibitor visits"
+        ScanPurposeCode.BENEFIT_CLAIM -> "Validate benefit/meal claims"
+        ScanPurposeCode.REWARD_REDEMPTION, ScanPurposeCode.REWARD_REDEMPTION_SCAN -> "Process reward redemptions"
+        ScanPurposeCode.EXIT -> "Record attendee exit"
+        else -> "Scan attendee QR credential"
+    }
+
+    private fun ScanPurposeResponse.pointsLabel(): String = when (code) {
+        ScanPurposeCode.ENTRY -> "+50 pts"
+        ScanPurposeCode.ATTENDANCE -> "+30 pts"
+        ScanPurposeCode.BOOTH_VISIT -> "+15 pts"
+        ScanPurposeCode.EXIT -> "+25 pts"
+        else -> ""
     }
 
     private fun openCameraScanner() {
@@ -237,7 +363,7 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
     }
 
     private fun submitCurrentSelection(trigger: String) {
-        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        val selectedEvent = selectedEvent()
         if (selectedEvent == null) {
             showMessage("No assigned event selected.")
             Log.w(tag, "submit blocked: missing selected event")
@@ -273,29 +399,20 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
         submitInFlight = true
         lastSubmittedSignature = signature
         lastSubmittedAtMs = now
-        Log.d(
-            tag,
-            "submit trigger=$trigger selectedEventId=${selectedEvent.id} selectedScanPurposeId=${selectedPurpose.scanPurposeId} selectedScanPurposeCode=${selectedPurpose.code} qrValue=$qrValue"
-        )
-        presenter.submitScan(
-            selectedEvent.id,
-            selectedPurpose,
-            qrValue,
-            notesInput.text.toString(),
-            staffUserId
-        )
+        Log.d(tag, "submit trigger=$trigger selectedEventId=${selectedEvent.id} selectedScanPurposeId=${selectedPurpose.scanPurposeId} selectedScanPurposeCode=${selectedPurpose.code} qrValue=$qrValue")
+        presenter.submitScan(selectedEvent.id, selectedPurpose, qrValue, notesInput.text.toString(), staffUserId)
     }
 
     private fun openVerificationResult(result: ScanVerificationResponse) {
         val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
-        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        val selectedEvent = selectedEvent()
         startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
             putExtra(StaffScreenExtras.EXTRA_IS_VALID, true)
             putExtra(StaffScreenExtras.EXTRA_MESSAGE, result.message.orEmpty())
             putExtra(StaffScreenExtras.EXTRA_EVENT_ID, result.eventId.toString())
             putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, selectedEvent?.label.orEmpty())
             putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, result.scanPurposeId.toString())
-            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.name ?: result.scanPurposeCode.name)
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.displayName() ?: result.scanPurposeCode.name)
             putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, result.scanPurposeCode.name)
             putExtra(StaffScreenExtras.EXTRA_QR_VALUE, result.qrValue)
             putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
@@ -312,14 +429,14 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
 
     private fun openRejectedResult(message: String) {
         val selectedPurpose = purposeOptions.getOrNull(purposeSpinner.selectedItemPosition)
-        val selectedEvent = eventOptions.getOrNull(eventSpinner.selectedItemPosition)
+        val selectedEvent = selectedEvent()
         startActivity(Intent(this, StaffScanResultActivity::class.java).apply {
             putExtra(StaffScreenExtras.EXTRA_IS_VALID, false)
             putExtra(StaffScreenExtras.EXTRA_MESSAGE, message)
             putExtra(StaffScreenExtras.EXTRA_EVENT_ID, selectedEvent?.id.orEmpty())
             putExtra(StaffScreenExtras.EXTRA_EVENT_TITLE, selectedEvent?.label.orEmpty())
             putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_ID, selectedPurpose?.scanPurposeId?.toString().orEmpty())
-            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.name.orEmpty())
+            putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_NAME, selectedPurpose?.displayName().orEmpty())
             putExtra(StaffScreenExtras.EXTRA_SCAN_PURPOSE_CODE, selectedPurpose?.code?.name.orEmpty())
             putExtra(StaffScreenExtras.EXTRA_QR_VALUE, qrInput.text.toString().trim())
             putExtra(StaffScreenExtras.EXTRA_STAFF_USER_ID, staffUserId.orEmpty())
@@ -335,22 +452,15 @@ open class ScannerActivity : AppCompatActivity(), ScannerContract.View {
 
         return runCatching {
             val json = JSONObject(trimmed)
-            val qrValue = firstNonBlank(
-                json.optString("qrValue"),
-                json.optString("qr_value"),
-                json.optString("value"),
-            )
-            val qrCredentialId = firstNonBlank(
-                json.optString("qrCredentialId"),
-                json.optString("qr_credential_id"),
-                json.optString("credentialId"),
-            )
+            val qrValue = firstNonBlank(json.optString("qrValue"), json.optString("qr_value"), json.optString("value"))
+            val qrCredentialId = firstNonBlank(json.optString("qrCredentialId"), json.optString("qr_credential_id"), json.optString("credentialId"))
             qrValue?.let { ParsedQrPayload(it, qrCredentialId) }
         }.getOrNull()
     }
 
-    private fun firstNonBlank(vararg values: String?): String? =
-        values.firstOrNull { !it.isNullOrBlank() }?.trim()
+    private fun firstNonBlank(vararg values: String?): String? = values.firstOrNull { !it.isNullOrBlank() }?.trim()
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private data class ParsedQrPayload(
         val qrValue: String,
