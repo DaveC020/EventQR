@@ -33,9 +33,19 @@ class DashboardPresenter(
         view?.updateHeader(sessionManager.getUserRole(), sessionManager.getFullName())
         view?.showLoading(true)
         dashboardJob = MainScope().launch {
+            val currentUserDeferred = async { repository.getCurrentUser() }
             val summaryDeferred = async { repository.getSummary() }
             val eventsDeferred = async { attendeeRepository.getEvents() }
             val registrationsDeferred = async { attendeeRepository.getMyRegistrations() }
+
+            val currentUserResult = currentUserDeferred.await()
+            if (currentUserResult is NetworkResult.Success) {
+                val user = currentUserResult.data
+                sessionManager.saveRole(user.role)
+                sessionManager.updateProfile(user.fullName, user.phoneNumber, user.email)
+                sessionManager.saveAvatarFileId(user.avatarFileId)
+                view?.updateHeader(user.role.name, user.fullName)
+            }
 
             val summaryResult = summaryDeferred.await()
             val eventsResult = eventsDeferred.await()
@@ -105,6 +115,9 @@ class DashboardPresenter(
                 )
                 view?.showSummary(summary)
 
+                if (currentUserResult is NetworkResult.Error) {
+                    view?.showMessage("Unable to refresh account role: ${currentUserResult.message}")
+                }
                 if (eventsResult is NetworkResult.Error) {
                     view?.showMessage("Unable to load events: ${eventsResult.message}")
                 }
