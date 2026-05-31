@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.thedavelopers.eventqr.features.organizer.*
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ open class ManageEventsActivity : AppCompatActivity() {
     private lateinit var repository: OrganizerRepository
     private lateinit var eventList: LinearLayout
     private lateinit var filterRow: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private var selectedFilter = "All"
     private var eventsSource: OrganizerMvpLoad<List<OrganizerMvpEvent>> =
         OrganizerMvpLoad(emptyList(), OrganizerMvpDataSource.ERROR, null)
@@ -36,7 +38,9 @@ open class ManageEventsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = OrganizerRepository(this)
-        val content = organizerShell("My Events", selectedNav = NAV_EVENTS)
+        val shell = organizerRefreshShell("My Events", selectedNav = NAV_EVENTS, onRefresh = { loadEvents(showInitialLoading = false) })
+        val content = shell.content
+        swipeRefresh = shell.swipeRefreshLayout
         filterRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
@@ -67,9 +71,14 @@ open class ManageEventsActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadEvents() {
+    private fun loadEvents(showInitialLoading: Boolean = true) {
+        if (showInitialLoading && !swipeRefresh.isRefreshing) {
+            eventList.removeAllViews()
+            eventList.addView(loadingState("Loading events..."))
+        }
         MainScope().launch {
             eventsSource = repository.loadEventsForMvp()
+            swipeRefresh.isRefreshing = false
             render()
         }
     }
