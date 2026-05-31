@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.dto.NotificationStatus
 import com.thedavelopers.eventqr.features.notifications.NotificationAdapter
@@ -19,6 +20,7 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
     private lateinit var presenter: NotificationsPresenter
     private lateinit var adapter: NotificationAdapter
     private lateinit var recyclerNotifications: RecyclerView
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var progressLoading: ProgressBar
     private lateinit var txtEmpty: TextView
     private lateinit var txtError: TextView
@@ -36,6 +38,7 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
                 presenter.markRead(notification.notificationId.toString())
             }
         }
+        swipeRefresh = findViewById(R.id.swipeRefreshNotifications)
         recyclerNotifications = findViewById(R.id.recyclerNotifications)
         progressLoading = findViewById(R.id.progressNotificationsLoading)
         txtEmpty = findViewById(R.id.txtNotificationsEmpty)
@@ -47,6 +50,7 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
         btnBack.setOnClickListener { finish() }
         actionMarkAllRead.setOnClickListener { presenter.markAllRead() }
         btnRetry.setOnClickListener { presenter.load() }
+        swipeRefresh.setOnRefreshListener { presenter.load() }
 
         recyclerNotifications.apply {
             layoutManager = LinearLayoutManager(this@AttendeeNotificationsActivity)
@@ -62,16 +66,21 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
     }
 
     override fun showLoading(isLoading: Boolean) {
-        progressLoading.visibility = if (isLoading) View.VISIBLE else View.GONE
+        if (!swipeRefresh.isRefreshing) {
+            progressLoading.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
         if (isLoading) {
             recyclerNotifications.visibility = View.GONE
             txtEmpty.visibility = View.GONE
             txtError.visibility = View.GONE
             btnRetry.visibility = View.GONE
+        } else {
+            swipeRefresh.isRefreshing = false
         }
     }
 
     override fun showContent() {
+        swipeRefresh.isRefreshing = false
         txtError.visibility = View.GONE
         btnRetry.visibility = View.GONE
         progressLoading.visibility = View.GONE
@@ -82,6 +91,7 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
     }
 
     override fun showError(message: String) {
+        swipeRefresh.isRefreshing = false
         recyclerNotifications.visibility = View.GONE
         txtEmpty.visibility = View.GONE
         progressLoading.visibility = View.GONE
@@ -97,6 +107,7 @@ open class AttendeeNotificationsActivity : AppCompatActivity(), NotificationsCon
     }
 
     override fun renderNotifications(items: List<NotificationResponse>) {
+        swipeRefresh.isRefreshing = false
         txtError.visibility = View.GONE
         btnRetry.visibility = View.GONE
         progressLoading.visibility = View.GONE
