@@ -58,7 +58,6 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private lateinit var notificationDot: View
     private lateinit var upcomingEventsLayout: LinearLayout
     private lateinit var discoverEventsLayout: LinearLayout
-    private lateinit var upcomingEventsViewAll: TextView
     private lateinit var discoverEventsSeeAll: TextView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private var isSwipeRefreshing = false
@@ -143,12 +142,14 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         summaryCompleted.text = summary.totalRewards.toString() // REPUPORSED from presenter
         notificationDot.visibility = if (summary.totalNotifications > 0) View.VISIBLE else View.GONE
 
+        setupPortalSwitcher()
         renderUpcomingEvents(summary.upcomingEvents.orEmpty())
         renderDiscoverEvents(summary.discoverEvents.orEmpty())
     }
 
     override fun showError(message: String) {
         stopSwipeRefresh()
+        setupPortalSwitcher()
         loadingText.text = message
         loadingText.visibility = View.VISIBLE
         renderUpcomingEvents(emptyList())
@@ -430,10 +431,9 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     }
 
     private fun setupPortalSwitcher() {
-        val role = sessionManager.getUserRole() ?: return
+        val role = sessionManager.getUserRole()
         val normalizedRole = RoleMapper.normalizeRole(role)
-        val allowedPortals = mutableListOf<String>()
-        allowedPortals.add("Attendee Portal")
+        val allowedPortals = mutableListOf("Attendee Portal")
 
         if (normalizedRole == AccountRole.STAFF.name || normalizedRole == AccountRole.ADMIN.name || normalizedRole == AccountRole.SUPER_ADMIN.name) {
             allowedPortals.add("Staff Portal")
@@ -445,10 +445,13 @@ open class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             allowedPortals.add("Admin Portal")
         }
 
+        val chip = findViewById<View>(R.id.portalSwitcherChip)
+        val dot = findViewById<View>(R.id.txtDashboardNameDot)
+        chip.visibility = if (allowedPortals.size > 1) View.VISIBLE else View.GONE
+        dot.visibility = if (allowedPortals.size > 1) View.VISIBLE else View.GONE
+        chip.setOnClickListener(null)
+
         if (allowedPortals.size > 1) {
-            val chip = findViewById<View>(R.id.portalSwitcherChip)
-            chip.visibility = View.VISIBLE
-            findViewById<View>(R.id.txtDashboardNameDot).visibility = View.VISIBLE
             chip.setOnClickListener {
                 showPortalSwitcher(allowedPortals)
             }
