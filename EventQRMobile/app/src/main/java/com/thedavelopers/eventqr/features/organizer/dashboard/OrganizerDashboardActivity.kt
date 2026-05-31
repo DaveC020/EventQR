@@ -92,9 +92,9 @@ open class OrganizerDashboardActivity : AppCompatActivity() {
             )
         }
         findViewById<View>(R.id.btnManageRewards).setOnClickListener {
-            openOrganizerPlaceholder(
-                title = "Rewards",
-                message = "Rewards management is currently a placeholder from the dashboard.",
+            openOrganizerPage(
+                com.thedavelopers.eventqr.features.organizer.rewards.ManageRewardsActivity::class.java,
+                selectedEventId().takeIf { it.isNotBlank() },
             )
         }
         findViewById<View>(R.id.btnSeeAllEvents).setOnClickListener {
