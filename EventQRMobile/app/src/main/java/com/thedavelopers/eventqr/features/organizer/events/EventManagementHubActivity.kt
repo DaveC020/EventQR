@@ -24,8 +24,8 @@ open class EventManagementHubActivity : AppCompatActivity() {
             val load = repository.loadEventForMvp(eventId)
             val event = load.data
             content.removeAllViews()
-            dataSourceBanner(load)?.let { content.addView(it) }
             if (event == null) {
+                dataSourceBanner(load)?.let { content.addView(it) }
                 content.addView(
                     if (load.source == OrganizerMvpDataSource.ERROR) {
                         errorState(load.message ?: "Event details could not be loaded.") { recreate() }
@@ -38,6 +38,8 @@ open class EventManagementHubActivity : AppCompatActivity() {
                 return@launch
             }
 
+            content.setPadding(0, 0, 0, dp(18))
+
             val registeredCount = event.currentAttendeeCount.coerceAtLeast(0)
             val capacity = event.capacity.coerceAtLeast(0)
             val available = (capacity - registeredCount).coerceAtLeast(0)
@@ -47,9 +49,7 @@ open class EventManagementHubActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     dp(120),
-                ).apply {
-                    setMargins(-dp(16), -dp(16), -dp(16), 0)
-                }
+                )
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
                     intArrayOf(Color.parseColor("#5A45F2"), Color.parseColor("#9B8CF5")),
@@ -71,19 +71,29 @@ open class EventManagementHubActivity : AppCompatActivity() {
                 })
             })
 
-            content.addView(row().apply {
+            val body = LinearLayout(this@EventManagementHubActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(16), dp(14), dp(16), 0)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = dp(14)
-                }
+                )
+            }
+            content.addView(body)
+
+            dataSourceBanner(load)?.let { body.addView(it) }
+
+            body.addView(row().apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
                 addView(summaryCard("Registered", formatCount(registeredCount)))
                 addView(summaryCard("Capacity", formatCount(capacity), Color.parseColor("#94A3B8")))
                 addView(summaryCard("Available", formatCount(available), SUCCESS))
             })
 
-            content.addView(section("Event Management").apply {
+            body.addView(section("Event Management").apply {
                 setPadding(dp(2), dp(20), dp(2), dp(10))
             })
 
@@ -106,7 +116,7 @@ open class EventManagementHubActivity : AppCompatActivity() {
                     4 -> Color.parseColor("#10B981") to Color.parseColor("#D1FAE5")
                     else -> Color.parseColor("#EF4444") to Color.parseColor("#FEE2E2")
                 }
-                content.addView(
+                body.addView(
                     menuCard(
                         label = label,
                         iconRes = icon,
