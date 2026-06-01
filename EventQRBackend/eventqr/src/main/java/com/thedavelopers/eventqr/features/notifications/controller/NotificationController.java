@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.thedavelopers.eventqr.features.auditlogs.service.AuditLogService;
 import com.thedavelopers.eventqr.features.notifications.model.dto.NotificationRequest;
 import com.thedavelopers.eventqr.features.notifications.model.dto.NotificationResponse;
 import com.thedavelopers.eventqr.features.notifications.service.NotificationService;
+import com.thedavelopers.eventqr.features.users.service.UserService;
+import com.thedavelopers.eventqr.shared.constants.AccountRole;
 import com.thedavelopers.eventqr.shared.response.ApiResponse;
 import com.thedavelopers.eventqr.shared.security.JwtService;
 
@@ -27,15 +30,32 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final JwtService jwtService;
+    private final AuditLogService auditLogService;
+    private final UserService userService;
 
-    public NotificationController(NotificationService notificationService, JwtService jwtService) {
+    public NotificationController(NotificationService notificationService, JwtService jwtService,
+                                  AuditLogService auditLogService, UserService userService) {
         this.notificationService = notificationService;
         this.jwtService = jwtService;
+        this.auditLogService = auditLogService;
+        this.userService = userService;
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<NotificationResponse>> create(@Valid @RequestBody NotificationRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Notification created", notificationService.create(request)));
+    public ResponseEntity<ApiResponse<NotificationResponse>> create(HttpServletRequest servletRequest,
+                                                                    @Valid @RequestBody NotificationRequest request) {
+        NotificationResponse response = notificationService.create(request);
+        UUID userId = jwtService.extractUserIdFromBearer(servletRequest.getHeader("Authorization"));
+        if (jwtService.extractRoleFromBearer(servletRequest.getHeader("Authorization")) == AccountRole.ADMIN) {
+            auditLogService.log(
+                    "NOTIFICATION_BROADCAST",
+                    request.title(),
+                    userId,
+                    userService.findOne(userId).fullName(),
+                    request.eventId(),
+                    request.recipientUserId());
+        }
+        return ResponseEntity.ok(ApiResponse.success("Notification created", response));
     }
 
     @GetMapping
