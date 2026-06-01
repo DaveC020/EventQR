@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -110,18 +109,18 @@ open class StaffAssignedEventsActivity : AppCompatActivity() {
     private fun eventCard(event: StaffAssignedEventResponse): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = rounded(Color.WHITE, 16, Color.parseColor("#E5E7EB"), 1)
-            elevation = dp(2).toFloat()
+            setPadding(dp(16), dp(14), dp(16), dp(16))
+            background = rounded(Color.WHITE, 16, Color.TRANSPARENT, 0)
+            elevation = dp(3).toFloat()
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { setMargins(0, 0, 0, dp(14)) }
+            ).apply { setMargins(0, 0, 0, dp(16)) }
 
             addView(View(this@StaffAssignedEventsActivity).apply {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.parseColor("#5A45F2"), Color.parseColor("#7C3AED")),
+                    intArrayOf(Color.parseColor("#6B4DF7"), Color.parseColor("#8A2BEF")),
                 ).apply { cornerRadius = dp(2).toFloat() }
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -137,6 +136,7 @@ open class StaffAssignedEventsActivity : AppCompatActivity() {
                     setTextColor(Color.parseColor("#111827"))
                     textSize = 16f
                     typeface = Typeface.DEFAULT_BOLD
+                    includeFontPadding = false
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 })
                 addView(statusBadge(event.status))
@@ -145,35 +145,47 @@ open class StaffAssignedEventsActivity : AppCompatActivity() {
             addView(LinearLayout(this@StaffAssignedEventsActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(8), 0, 0)
-                addView(TextView(this@StaffAssignedEventsActivity).apply {
-                    text = "☷ ${formatDate(event)}"
-                    setTextColor(Color.parseColor("#6B7280"))
-                    textSize = 13f
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(0, dp(12), 0, 0)
+
+                addView(metaItem(R.drawable.ic_staff_calendar, formatDate(event)).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.85f)
                 })
-                addView(TextView(this@StaffAssignedEventsActivity).apply {
-                    text = "⌖ ${event.location?.takeIf { it.isNotBlank() } ?: "Location not set"}"
-                    setTextColor(Color.parseColor("#6B7280"))
-                    textSize = 13f
-                    maxLines = 1
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                addView(metaItem(R.drawable.ic_staff_location, event.location?.takeIf { it.isNotBlank() } ?: "Location not set").apply {
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f)
                 })
             })
 
             addView(LinearLayout(this@StaffAssignedEventsActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 setPadding(0, dp(14), 0, 0)
-                addView(actionButton("⌗  Scan", filled = true) {
+                addView(actionButton("Scan", R.drawable.ic_staff_scan, filled = true) {
                     startActivity(Intent(this@StaffAssignedEventsActivity, ScannerActivity::class.java).apply {
                         putExtra(StaffScreenExtras.EXTRA_EVENT_ID, event.eventId.toString())
                     })
                 })
-                addView(actionButton("♙  Attendees", filled = false) {
+                addView(actionButton("Attendees", R.drawable.ic_staff_attendees, filled = false) {
                     startActivity(Intent(this@StaffAssignedEventsActivity, EventRegistrationsActivity::class.java).apply {
                         putExtra(StaffScreenExtras.EXTRA_EVENT_ID, event.eventId.toString())
                     })
                 })
+            })
+        }
+    }
+
+    private fun metaItem(iconRes: Int, value: String): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(ImageView(this@StaffAssignedEventsActivity).apply {
+                setImageResource(iconRes)
+                layoutParams = LinearLayout.LayoutParams(dp(14), dp(14)).apply { setMargins(0, 0, dp(4), 0) }
+            })
+            addView(TextView(this@StaffAssignedEventsActivity).apply {
+                text = value
+                setTextColor(Color.parseColor("#6B7280"))
+                textSize = 13f
+                includeFontPadding = false
+                maxLines = 1
             })
         }
     }
@@ -188,26 +200,44 @@ open class StaffAssignedEventsActivity : AppCompatActivity() {
             text = label
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
+            includeFontPadding = false
             setTextColor(Color.parseColor("#4F46E5"))
-            setPadding(dp(12), dp(5), dp(12), dp(5))
-            background = rounded(Color.parseColor("#EEF2FF"), 16, null, 0)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = rounded(Color.parseColor("#EEF2FF"), 18, null, 0)
         }
     }
 
-    private fun actionButton(label: String, filled: Boolean, onClick: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = label
+    private fun actionButton(label: String, iconRes: Int, filled: Boolean, onClick: () -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            textSize = 14f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (filled) Color.WHITE else Color.parseColor("#4F46E5"))
             background = if (filled) {
-                rounded(Color.parseColor("#5B25C9"), 10, null, 0)
+                GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.parseColor("#5A45F2"), Color.parseColor("#7C3AED")),
+                ).apply { cornerRadius = dp(10).toFloat() }
             } else {
                 rounded(Color.WHITE, 10, Color.parseColor("#4F46E5"), 1)
             }
-            layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(0, 0, dp(if (filled) 8 else 0), 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f).apply {
+                setMargins(0, 0, dp(if (filled) 8 else 0), 0)
+            }
+            isClickable = true
+            isFocusable = true
             setOnClickListener { onClick() }
+
+            addView(ImageView(this@StaffAssignedEventsActivity).apply {
+                setImageResource(iconRes)
+                layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { setMargins(0, 0, dp(8), 0) }
+            })
+            addView(TextView(this@StaffAssignedEventsActivity).apply {
+                text = label
+                gravity = Gravity.CENTER
+                textSize = 14f
+                includeFontPadding = false
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (filled) Color.WHITE else Color.parseColor("#4F46E5"))
+            })
         }
     }
 
