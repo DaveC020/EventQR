@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thedavelopers.eventqr.features.auditlogs.service.AuditLogService;
 import com.thedavelopers.eventqr.features.events.model.entity.Event;
 import com.thedavelopers.eventqr.features.events.repository.EventRepository;
 import com.thedavelopers.eventqr.features.eventrequests.model.dto.EventCreationRequestDto;
@@ -20,7 +21,6 @@ import com.thedavelopers.eventqr.shared.exceptions.BadRequestException;
 import com.thedavelopers.eventqr.shared.exceptions.ForbiddenException;
 import com.thedavelopers.eventqr.shared.exceptions.ResourceNotFoundException;
 import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort;
-import com.thedavelopers.eventqr.shared.interfaces.AttendeeDirectoryPort.AttendeeSnapshot;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -32,16 +32,19 @@ public class EventCreationRequestService {
     private final EventCreationRequestRepository eventRequestRepository;
     private final EventRepository eventRepository;
     private final AttendeeDirectoryPort attendeeDirectoryPort;
+    private final AuditLogService auditLogService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     public EventCreationRequestService(EventCreationRequestRepository eventRequestRepository,
                                        EventRepository eventRepository,
-                                       AttendeeDirectoryPort attendeeDirectoryPort) {
+                                       AttendeeDirectoryPort attendeeDirectoryPort,
+                                       AuditLogService auditLogService) {
         this.eventRequestRepository = eventRequestRepository;
         this.eventRepository = eventRepository;
         this.attendeeDirectoryPort = attendeeDirectoryPort;
+        this.auditLogService = auditLogService;
     }
 
     public EventRequestResponse create(UUID requesterUserId, EventCreationRequestDto request) {
@@ -98,7 +101,7 @@ public class EventCreationRequestService {
         return toResponse(requireRequest(requestId));
     }
 
-    public EventRequestResponse approve(UUID requestId, UUID adminUserId, String remarks) {
+    public EventRequestResponse approve(UUID requestId, UUID adminUserId, String adminFullName, String remarks) {
         EventCreationRequest request = requireRequest(requestId);
         request.setStatus(EventRequestStatus.APPROVED);
         request.setAdminRemarks(trimToNull(remarks));
@@ -108,24 +111,46 @@ public class EventCreationRequestService {
         request.setEventId(linkedEvent.getId());
         EventCreationRequest savedRequest = eventRequestRepository.saveAndFlush(request);
         entityManager.refresh(savedRequest);
+        auditLogService.log(
+                "EVENT_REQUEST_APPROVED",
+                savedRequest.getEventName(),
+                adminUserId,
+                adminFullName,
+                linkedEvent.getId(),
+                savedRequest.getRequesterUserId());
         return toResponse(savedRequest);
     }
 
-    public EventRequestResponse reject(UUID requestId, UUID adminUserId, String remarks) {
+    public EventRequestResponse reject(UUID requestId, UUID adminUserId, String adminFullName, String remarks) {
         EventCreationRequest request = requireRequest(requestId);
         request.setStatus(EventRequestStatus.REJECTED);
         request.setAdminRemarks(trimToNull(remarks));
         request.setReviewedByUserId(adminUserId);
         request.setReviewedAt(Instant.now());
-        return toResponse(eventRequestRepository.save(request));
+        EventCreationRequest savedRequest = eventRequestRepository.save(request);
+        auditLogService.log(
+                "EVENT_REQUEST_REJECTED",
+                savedRequest.getEventName(),
+                adminUserId,
+                adminFullName,
+                savedRequest.getEventId(),
+                savedRequest.getRequesterUserId());
+        return toResponse(savedRequest);
     }
 
-    public EventRequestResponse upgradeOrganizer(UUID requestId) {
+    public EventRequestResponse upgradeOrganizer(UUID requestId, UUID adminUserId, String adminFullName) {
         EventCreationRequest request = requireRequest(requestId);
         if (request.getStatus() != EventRequestStatus.APPROVED) {
             throw new BadRequestException("Only approved requests can upgrade an attendee to organizer");
         }
         attendeeDirectoryPort.changeRole(request.getRequesterUserId(), AccountRole.ORGANIZER);
+        auditLogService.log(
+                "ACCOUNT_ROLE_UPDATED",
+                request.getRequesterName(),
+                adminUserId,
+                adminFullName,
+                request.getEventId(),
+                request.getRequesterUserId());
         return toResponse(request);
     }
 
@@ -226,5 +251,3 @@ public class EventCreationRequestService {
                 .anyMatch(feature -> featureLabel.equalsIgnoreCase(feature));
     }
 }
-
-
