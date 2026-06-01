@@ -12,8 +12,10 @@ import androidx.lifecycle.lifecycleScope
 import com.thedavelopers.eventqr.R
 import com.thedavelopers.eventqr.core.api.NetworkResult
 import com.thedavelopers.eventqr.core.session.SessionManager
+import com.thedavelopers.eventqr.core.util.RoleMapper
 import com.thedavelopers.eventqr.features.events.model.dto.AttendeeEventResponse
 import com.thedavelopers.eventqr.features.events.model.dto.EventAvailabilityResponse
+import com.thedavelopers.eventqr.features.organizer.events.EventManagementHubActivity
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.launch
@@ -24,6 +26,7 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
     private lateinit var eventId: String
     private var currentEvent: AttendeeEventResponse? = null
     private var isAlreadyRegistered = false
+    private var isOwnedByCurrentOrganizer = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,7 +43,6 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         findViewById<TextView>(R.id.txtDetailVenue).text = intent.getStringExtra(EXTRA_EVENT_LOCATION).orEmpty().ifBlank { "Location not specified" }
         findViewById<TextView>(R.id.txtTagCategory).text = intent.getStringExtra(EXTRA_EVENT_CATEGORY).orEmpty().ifBlank { "Technology" }
         
-        // Initial binding from intent extras if available
         intent.getStringExtra(EXTRA_EVENT_COUNT)?.let { countStr ->
             intent.getStringExtra(EXTRA_EVENT_CAPACITY)?.let { capacityStr ->
                 updateRegistrationStatusUI(countStr.toIntOrNull() ?: 0, capacityStr.toIntOrNull() ?: 0)
@@ -62,6 +64,10 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         }
 
         findViewById<Button>(R.id.btnRegisterForEvent).setOnClickListener {
+            if (isOwnedByCurrentOrganizer) {
+                openOrganizerEventManagement()
+                return@setOnClickListener
+            }
             currentEvent?.let { event ->
                 presenter.registerForEvent(eventId, event.title)
             } ?: presenter.registerForEvent(eventId, intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty())
@@ -80,7 +86,6 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         findViewById<TextView>(R.id.txtDetailDescription).text = event.description?.takeIf { it.isNotBlank() } ?: "No event description provided."
         findViewById<TextView>(R.id.txtDetailVenue).text = event.location?.takeIf { it.isNotBlank() } ?: "Location not specified."
 
-        // Date & Time
         val manilaZone = java.time.ZoneId.of("Asia/Manila")
         val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", java.util.Locale.ENGLISH).withZone(manilaZone)
         val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.ENGLISH).withZone(manilaZone)
@@ -99,7 +104,6 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
             findViewById<TextView>(R.id.txtTagCategory).text = "Event"
         }
 
-        // Rewards row inside info card
         val rewardsRow = findViewById<View>(R.id.layoutRewardsRow)
         val rewardsDivider = findViewById<View>(R.id.viewRewardsDivider)
         if (event.rewardsEnabled) {
@@ -110,10 +114,8 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
             rewardsDivider?.visibility = View.GONE
         }
 
-        // Hide old separate rewards layout just in case
         findViewById<View>(R.id.layoutDetailRewards)?.visibility = View.GONE
 
-        // Status Label
         val now = Instant.now()
         val statusText = when {
             event.eventEndAt?.isBefore(now) == true -> "Completed"
@@ -124,7 +126,7 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         }
         findViewById<TextView>(R.id.txtDetailStatus).text = statusText
 
-        loadEventAvailability(event)
+        checkOwnedEventThenAvailability(event)
     }
 
     private fun updateRegistrationStatusUI(current: Int, capacity: Int) {
@@ -139,6 +141,34 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         findViewById<TextView>(R.id.txtRemainingSpots).text = "$remaining spots remaining"
     }
 
+    private fun checkOwnedEventThenAvailability(event: AttendeeEventResponse) {
+        val normalizedRole = RoleMapper.normalizeRole(SessionManager(this).getUserRole())
+        val roleCanOwnEvents = normalizedRole.contains("ORGANIZER") || normalizedRole.contains("ADMIN") || normalizedRole.contains("SUPER_ADMIN")
+        if (!roleCanOwnEvents) {
+            loadEventAvailability(event)
+            return
+        }
+
+        findViewById<Button>(R.id.btnRegisterForEvent).apply {
+            isEnabled = false
+            text = "Checking access..."
+            setBackgroundResource(R.drawable.bg_disabled_button)
+        }
+
+        lifecycleScope.launch {
+            val ownedEventId = event.eventId.toString()
+            isOwnedByCurrentOrganizer = when (val result = repository.getOrganizerEvents()) {
+                is NetworkResult.Success -> result.data.any { it.eventId.toString() == ownedEventId }
+                else -> false
+            }
+            if (isOwnedByCurrentOrganizer) {
+                setOwnedEventState()
+            } else {
+                loadEventAvailability(event)
+            }
+        }
+    }
+
     private fun loadEventAvailability(event: AttendeeEventResponse) {
         lifecycleScope.launch {
             when (val result = repository.getEventAvailability(event.eventId.toString())) {
@@ -146,7 +176,6 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
                     updateRegisterButtonFromAvailability(event, result.data)
                 }
                 is NetworkResult.Error -> {
-                    // Fallback path: backend registration validation remains the final gate.
                     updateRegisterButtonWithFallback(event, result.message.ifBlank { "Availability unavailable" })
                 }
                 NetworkResult.Loading -> Unit
@@ -155,10 +184,14 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
     }
 
     private fun updateRegisterButtonFromAvailability(event: AttendeeEventResponse, availability: EventAvailabilityResponse) {
+        if (isOwnedByCurrentOrganizer) {
+            setOwnedEventState()
+            return
+        }
+
         val btn = findViewById<Button>(R.id.btnRegisterForEvent)
         val statusView = findViewById<TextView>(R.id.txtDetailStatus)
 
-        // Refine status based on availability
         val now = Instant.now()
         val isPast = event.eventEndAt?.isBefore(now) == true
         val isOngoing = !isPast && event.eventStartAt != null && event.eventEndAt != null &&
@@ -195,6 +228,11 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
     }
 
     private fun updateRegisterButtonWithFallback(event: AttendeeEventResponse, message: String) {
+        if (isOwnedByCurrentOrganizer) {
+            setOwnedEventState()
+            return
+        }
+
         val btn = findViewById<Button>(R.id.btnRegisterForEvent)
 
         if (isAlreadyRegistered) {
@@ -211,6 +249,10 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
 
     override fun updateRegistrationStatus(isRegistered: Boolean) {
         isAlreadyRegistered = isRegistered
+        if (isOwnedByCurrentOrganizer) {
+            setOwnedEventState()
+            return
+        }
         if (isRegistered) {
             val btn = findViewById<Button>(R.id.btnRegisterForEvent)
             setAlreadyRegisteredState(btn)
@@ -228,6 +270,11 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
     }
 
     override fun openRegistration(eventId: String, eventTitle: String, email: String, fullName: String, phoneNumber: String) {
+        if (isOwnedByCurrentOrganizer) {
+            openOrganizerEventManagement()
+            return
+        }
+
         val intent = Intent(this, AttendeeRegistrationActivity::class.java)
             .putExtra(EXTRA_EVENT_ID, eventId)
             .putExtra(EXTRA_EVENT_TITLE, eventTitle)
@@ -257,6 +304,25 @@ open class EventDetailActivity : AppCompatActivity(), EventDetailContract.View {
         button.isEnabled = false
         button.text = "Already Registered"
         button.setBackgroundResource(R.drawable.bg_disabled_button)
+    }
+
+    private fun setOwnedEventState() {
+        findViewById<TextView>(R.id.txtDetailStatus).text = "You organize this event"
+        findViewById<Button>(R.id.btnRegisterForEvent).apply {
+            isEnabled = true
+            text = "Manage Event"
+            setBackgroundResource(R.drawable.bg_detail_register_button)
+        }
+    }
+
+    private fun openOrganizerEventManagement() {
+        val event = currentEvent
+        val targetId = event?.eventId?.toString() ?: eventId
+        val targetTitle = event?.title ?: intent.getStringExtra(EXTRA_EVENT_TITLE).orEmpty()
+        startActivity(Intent(this, EventManagementHubActivity::class.java).apply {
+            putExtra("event_id", targetId)
+            putExtra("event_title", targetTitle)
+        })
     }
 
     private fun logRegistrationWindow(
