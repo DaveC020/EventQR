@@ -40,6 +40,8 @@ internal const val NAV_REPORTS = "Reports"
 
 internal val PRIMARY = Color.parseColor("#25215F")
 internal val PURPLE = Color.parseColor("#5B25C9")
+internal val NAV_PURPLE = Color.parseColor("#4F46E5")
+internal val NAV_INACTIVE = Color.parseColor("#9CA3AF")
 internal val BG = Color.parseColor("#F7F7FA")
 internal val CARD = Color.WHITE
 internal val TEXT = Color.parseColor("#111827")
@@ -527,7 +529,7 @@ internal fun AppCompatActivity.bottomNav(selected: String): LinearLayout {
                 openOrganizerPage(com.thedavelopers.eventqr.features.organizer.attendees.AttendeeManagementActivity::class.java, currentEventId)
             }
         }),
-        Triple(NAV_REPORTS, com.thedavelopers.eventqr.R.drawable.ic_search, {
+        Triple(NAV_REPORTS, com.thedavelopers.eventqr.R.drawable.ic_organizer_reports, {
             if (this@bottomNav !is com.thedavelopers.eventqr.features.organizer.reports.EventReportsActivity) {
                 openOrganizerPage(com.thedavelopers.eventqr.features.organizer.reports.EventReportsActivity::class.java, currentEventId)
             }
@@ -553,9 +555,9 @@ internal fun AppCompatActivity.bottomNav(selected: String): LinearLayout {
                 )
                 setImageResource(iconRes)
                 setPadding(dp(if (isSelected) 9 else 8), dp(if (isSelected) 9 else 8), dp(if (isSelected) 9 else 8), dp(if (isSelected) 9 else 8))
-                setColorFilter(if (isSelected) Color.WHITE else Color.parseColor("#9CA3AF"))
+                setColorFilter(if (isSelected) Color.WHITE else NAV_INACTIVE)
             })
-            addView(text(label, 11, isSelected, if (isSelected) PURPLE else Color.parseColor("#9CA3AF")).apply {
+            addView(text(label, 11, isSelected, if (isSelected) NAV_PURPLE else NAV_INACTIVE).apply {
                 gravity = Gravity.CENTER
                 setPadding(0, dp(4), 0, 0)
             })
