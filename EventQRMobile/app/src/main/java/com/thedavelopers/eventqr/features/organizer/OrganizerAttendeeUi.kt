@@ -51,12 +51,10 @@ internal fun OrganizerMvpAttendee.matchesOrganizerAttendeeQuery(query: String, f
 internal fun attendeeInitial(name: String): String = name.trim().firstOrNull()?.uppercase() ?: "?"
 
 internal fun organizerEventDateLine(shortDate: String, eventTitle: String, venue: String): String {
-    val date = shortDate.trim()
-    val eventVenue = venue.trim()
-    return when {
-        date.isNotBlank() && eventVenue.isNotBlank() -> "$date · $eventVenue"
-        date.isNotBlank() -> date
-        eventVenue.isNotBlank() -> eventVenue
-        else -> eventTitle.trim()
-    }
+    val rawDate = shortDate.trim()
+    return rawDate
+        .replace(Regex("T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?"), "")
+        .replace(Regex("\\s*·.*$"), "")
+        .trim()
+        .ifBlank { eventTitle.trim() }
 }
