@@ -21,4 +21,20 @@ public record TransactionResponse(UUID transactionId,
                                   int pointsDelta,
                                   String reason,
                                   Instant scannedAt) {
+
+    public TransactionResponse(UUID transactionId,
+                               UUID eventId,
+                               UUID attendeeUserId,
+                               UUID registrationId,
+                               UUID qrCredentialId,
+                               UUID scanPurposeId,
+                               TransactionType transactionType,
+                               TransactionResult transactionResult,
+                               int pointsDelta,
+                               String reason,
+                               Instant scannedAt,
+                               String eventTitle) {
+        this(transactionId, eventId, eventTitle, attendeeUserId, null, registrationId, null, qrCredentialId,
+                scanPurposeId, null, transactionType, transactionResult, pointsDelta, reason, scannedAt);
+    }
 }
