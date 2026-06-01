@@ -10,4 +10,13 @@ public record EventResponse(UUID eventId, String title, String description, Stri
                             Instant eventEndAt, int capacity, int currentAttendeeCount, EventStatus status,
                             boolean rewardsEnabled, UUID organizerUserId, UUID approvedByUserId,
                             Instant approvedAt, String rejectionReason) {
+    public EventResponse(UUID eventId, String title, String description, String location,
+                         Instant registrationOpenAt, Instant registrationCloseAt, Instant eventStartAt,
+                         Instant eventEndAt, int capacity, int currentAttendeeCount, EventStatus status,
+                         boolean rewardsEnabled, UUID organizerUserId, UUID approvedByUserId,
+                         Instant approvedAt, String rejectionReason) {
+        this(eventId, title, description, location, null, registrationOpenAt, registrationCloseAt,
+                eventStartAt, eventEndAt, capacity, currentAttendeeCount, status, rewardsEnabled,
+                organizerUserId, approvedByUserId, approvedAt, rejectionReason);
+    }
 }
