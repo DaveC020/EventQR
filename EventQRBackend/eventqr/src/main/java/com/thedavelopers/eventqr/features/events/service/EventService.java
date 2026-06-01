@@ -36,6 +36,7 @@ public class EventService implements EventLookupPort {
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setLocation(request.location());
+        event.setEventLogoUrl(request.eventLogoUrl());
         event.setRegistrationOpenAt(request.registrationOpenAt());
         event.setRegistrationCloseAt(request.registrationCloseAt());
         event.setEventStartAt(request.eventStartAt());
@@ -124,6 +125,7 @@ public class EventService implements EventLookupPort {
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setLocation(request.location());
+        event.setEventLogoUrl(request.eventLogoUrl());
         event.setRegistrationOpenAt(request.registrationOpenAt());
         event.setRegistrationCloseAt(request.registrationCloseAt());
         event.setEventStartAt(request.eventStartAt());
@@ -181,7 +183,7 @@ public class EventService implements EventLookupPort {
         int capacity = safeCount(event.getCapacity());
         int attendeeCount = safeCount(event.getCurrentAttendeeCount());
         return new EventResponse(event.getId(), event.getTitle(), event.getDescription(), event.getLocation(),
-                event.getRegistrationOpenAt(), event.getRegistrationCloseAt(), event.getEventStartAt(),
+                event.getEventLogoUrl(), event.getRegistrationOpenAt(), event.getRegistrationCloseAt(), event.getEventStartAt(),
                 event.getEventEndAt(), capacity,
                 attendeeCount, event.getStatus(),
                 event.isRewardsEnabled(), event.getOrganizerUserId(), event.getApprovedByUserId(), event.getApprovedAt(),
@@ -194,6 +196,7 @@ public class EventService implements EventLookupPort {
             event.getTitle(),
             event.getDescription(),
             event.getLocation(),
+            event.getEventLogoUrl(),
             event.getRegistrationOpenAt(),
             event.getRegistrationCloseAt(),
             event.getEventStartAt(),
