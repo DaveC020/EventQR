@@ -41,6 +41,7 @@ class AdminDashboardActivity : AppCompatActivity() {
     private lateinit var textLoadHint: TextView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private var isSwipeRefreshing = false
+    private var hasLoadedSummary = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +54,9 @@ class AdminDashboardActivity : AppCompatActivity() {
         bindActions()
         setupPortalSwitcher()
         textAdminName.text = sessionManager.getFullName().orEmpty().ifBlank { "Admin User" }
+        cardPendingAlert.visibility = View.GONE
+        textPendingAlert.text = ""
+        textPendingRequests.text = "0"
     }
 
     override fun onResume() {
@@ -165,6 +169,7 @@ class AdminDashboardActivity : AppCompatActivity() {
     }
 
     private fun loadSummary() {
+        cardPendingAlert.visibility = if (hasLoadedSummary && cardPendingAlert.visibility == View.VISIBLE) View.VISIBLE else View.GONE
         if (!isSwipeRefreshing) {
             progressLoading.visibility = View.VISIBLE
             textLoadHint.visibility = View.VISIBLE
@@ -191,19 +196,16 @@ class AdminDashboardActivity : AppCompatActivity() {
                 }
                 val totalAccounts = when (usersResult) {
                     is NetworkResult.Success -> usersResult.data.size
-                    // TODO: keep 0 fallback for MVP if accounts endpoint is unavailable.
                     else -> 0
                 }
                 val activeEvents = when (eventsResult) {
                     is NetworkResult.Success -> eventsResult.data.count {
                         it.status == EventStatus.ACTIVE || it.status == EventStatus.APPROVED
                     }
-                    // TODO: keep 0 fallback for MVP if events endpoint is unavailable.
                     else -> 0
                 }
                 val auditLogs = when (auditLogsResult) {
                     is NetworkResult.Success -> auditLogsResult.data.size
-                    // TODO: keep 0 fallback for MVP if audit endpoint is unavailable.
                     else -> 0
                 }
 
@@ -212,6 +214,7 @@ class AdminDashboardActivity : AppCompatActivity() {
                 textActiveEvents.text = activeEvents.toString()
                 textAuditLogs.text = formatCount(auditLogs)
 
+                hasLoadedSummary = true
                 if (pendingRequests > 0) {
                     cardPendingAlert.visibility = View.VISIBLE
                     textPendingAlert.text = if (pendingRequests == 1) {
@@ -220,6 +223,7 @@ class AdminDashboardActivity : AppCompatActivity() {
                         "$pendingRequests event requests pending review"
                     }
                 } else {
+                    textPendingAlert.text = ""
                     cardPendingAlert.visibility = View.GONE
                 }
 
