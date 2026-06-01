@@ -158,13 +158,8 @@ public class TransactionService {
         int pointsDelta = purpose.trackingOnly() ? 0 : Math.max(0, rule.getPointsAwarded());
         String metadata = buildMetadata(request.qrValue(), purpose.code().name(), purpose.name(), request.notes(), "staff-scan");
         log.debug("Transaction save request eventId={} registrationId={} qrCredentialId={} scanPurposeId={} staffUserId={} transactionType={} metadata={}",
-                eventSnapshot.eventId(),
-                registration.registrationId(),
-                registration.qrCredentialId(),
-                purpose.scanPurposeId(),
-                request.staffUserId(),
-                transactionType,
-                metadata);
+                eventSnapshot.eventId(), registration.registrationId(), registration.qrCredentialId(), purpose.scanPurposeId(),
+                request.staffUserId(), transactionType, metadata);
         TransactionLog transactionLog = createLog(eventSnapshot.eventId(), registration.attendeeUserId(), registration.registrationId(),
                 registration.qrCredentialId(), purpose.scanPurposeId(), request.staffUserId(), TransactionResult.APPROVED,
                 transactionType, pointsDelta, null, metadata);
@@ -312,14 +307,7 @@ public class TransactionService {
                                        String scanPurposeCode, String scanPurposeLabel) {
         String metadata = buildMetadata(qrValue, scanPurposeCode, scanPurposeLabel, notes, "staff-scan");
         log.debug("Transaction reject save request eventId={} registrationId={} qrCredentialId={} scanPurposeId={} staffUserId={} transactionType={} metadata={} reason={}",
-                eventId,
-                registrationId,
-                qrCredentialId,
-                scanPurposeId,
-                staffUserId,
-                transactionType,
-                metadata,
-                reason);
+                eventId, registrationId, qrCredentialId, scanPurposeId, staffUserId, transactionType, metadata, reason);
         TransactionLog transactionLog = createLog(eventId, attendeeUserId, registrationId, qrCredentialId, scanPurposeId, staffUserId,
                 TransactionResult.REJECTED, transactionType, pointsDelta, reason, metadata);
         TransactionLog saved = transactionLogRepository.save(transactionLog);
@@ -370,9 +358,20 @@ public class TransactionService {
     }
 
     private TransactionResponse toResponse(TransactionLog log) {
-        String eventTitle = eventLookupPort.findById(log.getEventId()).map(EventLookupPort.EventSnapshot::title).orElse(null);
-        return new TransactionResponse(log.getId(), log.getEventId(), log.getAttendeeUserId(), log.getRegistrationId(),
-                log.getQrCredentialId(), log.getScanPurposeId(), log.getTransactionType(), log.getTransactionResult(),
-            log.getPointsDelta(), log.getReason(), log.getScannedAt(), eventTitle);
+        String eventTitle = eventLookupPort.findById(log.getEventId())
+                .map(EventLookupPort.EventSnapshot::title)
+                .orElse(null);
+        String attendeeName = attendeeDirectoryPort.findById(log.getAttendeeUserId())
+                .map(AttendeeDirectoryPort.AttendeeSnapshot::fullName)
+                .orElse(null);
+        String registrationStatus = registrationLookupPort.findById(log.getRegistrationId())
+                .map(snapshot -> snapshot.status().name())
+                .orElse(null);
+        String scanPurposeName = scanPurposePort.findById(log.getScanPurposeId())
+                .map(ScanPurposePort.ScanPurposeSnapshot::name)
+                .orElse(null);
+        return new TransactionResponse(log.getId(), log.getEventId(), eventTitle, log.getAttendeeUserId(), attendeeName,
+                log.getRegistrationId(), registrationStatus, log.getQrCredentialId(), log.getScanPurposeId(), scanPurposeName,
+                log.getTransactionType(), log.getTransactionResult(), log.getPointsDelta(), log.getReason(), log.getScannedAt());
     }
 }
