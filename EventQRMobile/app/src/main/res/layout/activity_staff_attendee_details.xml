@@ -190,40 +190,68 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="16dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialButton
+                <LinearLayout
                     android:id="@+id/btnPrintOrReprintId"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_profile_button"
-                    android:text="Print ID"
-                    android:textAllCaps="false"
-                    android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@null"
-                    app:icon="@drawable/ic_file"
-                    app:iconTint="#FFFFFF" />
+                    android:background="@drawable/bg_event_filter_chip_selected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialButton
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_print"
+                        app:tint="@android:color/white" />
+
+                    <TextView
+                        android:id="@+id/txtPrintOrReprintIdLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Print ID"
+                        android:textColor="@android:color/white"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/btnScanAgain"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="10dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="6dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_staff_scan_again_button"
-                    android:text="Scan Again"
-                    android:textAllCaps="false"
-                    android:textColor="#4F46E5"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@null"
-                    app:icon="@drawable/ic_staff_scan"
-                    app:iconTint="#4F46E5" />
+                    android:background="@drawable/bg_event_filter_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_qr_scan"
+                        app:tint="@color/eventqr_purple" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Scan Again"
+                        android:textColor="@color/eventqr_purple"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
 
             <ProgressBar
