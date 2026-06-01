@@ -8,13 +8,16 @@ import retrofit2.HttpException
 
 private val errorParser = Gson()
 
+@Suppress("UNCHECKED_CAST")
 suspend fun <T> safeApiCall(call: suspend () -> ApiResponse<T>): NetworkResult<T> {
     return withContext(Dispatchers.IO) {
         runCatching { call() }
             .fold(
                 onSuccess = { response ->
-                    if (response.success && response.data != null) {
-                        NetworkResult.Success(response.data, response.message)
+                    if (response.success) {
+                        response.data?.let { data ->
+                            NetworkResult.Success(data, response.message)
+                        } ?: NetworkResult.Success(Unit as T, response.message)
                     } else {
                         NetworkResult.Error(response.message ?: "Request failed")
                     }
