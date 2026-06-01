@@ -227,6 +227,7 @@ public class EventCreationRequestService {
         event.setTitle(request.getEventName().trim());
         event.setDescription(request.getEventDescription().trim());
         event.setLocation(trimToNull(request.getVenue()));
+        event.setEventLogoUrl(trimToNull(request.getEventLogoUrl()));
         event.setRegistrationOpenAt(request.getRegistrationStartDateTime());
         event.setRegistrationCloseAt(request.getRegistrationEndDateTime());
         event.setEventStartAt(request.getStartDateTime());
