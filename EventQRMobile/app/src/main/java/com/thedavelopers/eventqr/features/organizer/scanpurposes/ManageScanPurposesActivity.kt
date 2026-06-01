@@ -233,12 +233,15 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
         dialogView.addView(duplicateCheck)
         dialogView.addView(trackingOnlyCheck)
 
-        val dialog = AlertDialog.Builder(this)
+        val dialogBuilder = AlertDialog.Builder(this)
             .setTitle(if (isEdit) "Edit Scan Purpose" else "Add Scan Purpose")
             .setView(dialogView)
             .setPositiveButton("Save", null)
             .setNegativeButton("Cancel", null)
-            .create()
+        if (isEdit) {
+            dialogBuilder.setNeutralButton("Delete", null)
+        }
+        val dialog = dialogBuilder.create()
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -274,6 +277,16 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
                 savePurpose(requestPurpose)
                 dialog.dismiss()
             }
+
+            if (isEdit && purpose != null) {
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+                    setTextColor(Color.parseColor("#DC2626"))
+                    setOnClickListener {
+                        dialog.dismiss()
+                        confirmDeletePurpose(purpose)
+                    }
+                }
+            }
         }
         dialog.show()
     }
@@ -296,6 +309,59 @@ open class ManageScanPurposesActivity : AppCompatActivity() {
                 is NetworkResult.Error -> {
                     Log.w(persistenceTag, "eventId=${selectedEvent.id} saveError message=${result.message}")
                     Toast.makeText(this@ManageScanPurposesActivity, "Failed to save: ${result.message}", Toast.LENGTH_SHORT).show()
+                }
+                NetworkResult.Loading -> Unit
+            }
+        }
+    }
+
+    private fun confirmDeletePurpose(purpose: OrganizerMvpScanPurpose) {
+        val purposeId = purpose.id?.takeIf { it.isNotBlank() }
+        if (purposeId == null) {
+            Toast.makeText(this, "Unable to delete unsaved scan purpose.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Delete scan purpose?")
+            .setMessage("${purpose.label} will be permanently removed only if it has no transaction logs yet. If it was already used, disable it instead so old logs stay intact.")
+            .setPositiveButton("Delete") { _, _ -> deletePurposeIfUnused(purposeId, purpose.label) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deletePurposeIfUnused(purposeId: String, purposeName: String) {
+        MainScope().launch {
+            val transactionResult = repository.fetchOrganizerTransactions(selectedEvent.id)
+            val usageCount = when (transactionResult) {
+                is NetworkResult.Success -> transactionResult.data.count { it.scanPurposeId?.toString() == purposeId }
+                is NetworkResult.Error -> {
+                    Toast.makeText(
+                        this@ManageScanPurposesActivity,
+                        "Unable to verify transaction usage. Try again before deleting.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    return@launch
+                }
+                NetworkResult.Loading -> 0
+            }
+
+            if (usageCount > 0) {
+                Toast.makeText(
+                    this@ManageScanPurposesActivity,
+                    "$purposeName has $usageCount transaction log(s). Disable it instead.",
+                    Toast.LENGTH_LONG,
+                ).show()
+                return@launch
+            }
+
+            when (val deleteResult = repository.deleteScanPurposeForMvp(selectedEvent.id, purposeId)) {
+                is NetworkResult.Success -> {
+                    Toast.makeText(this@ManageScanPurposesActivity, "Scan purpose deleted.", Toast.LENGTH_SHORT).show()
+                    loadPurposes()
+                }
+                is NetworkResult.Error -> {
+                    Toast.makeText(this@ManageScanPurposesActivity, "Failed to delete: ${deleteResult.message}", Toast.LENGTH_LONG).show()
                 }
                 NetworkResult.Loading -> Unit
             }
