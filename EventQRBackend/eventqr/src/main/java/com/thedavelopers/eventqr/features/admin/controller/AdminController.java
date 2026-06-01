@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.thedavelopers.eventqr.features.auditlogs.service.AuditLogService;
 import com.thedavelopers.eventqr.features.users.model.dto.AdminCreateRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.ProfileUpdateRequest;
 import com.thedavelopers.eventqr.features.users.model.dto.UserResponse;
@@ -36,12 +37,15 @@ public class AdminController {
     private final UserService userService;
     private final JwtService jwtService;
     private final EventCreationRequestService eventCreationRequestService;
+    private final AuditLogService auditLogService;
 
     public AdminController(UserService userService, JwtService jwtService,
-                           EventCreationRequestService eventCreationRequestService) {
+                           EventCreationRequestService eventCreationRequestService,
+                           AuditLogService auditLogService) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.eventCreationRequestService = eventCreationRequestService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/users")
@@ -61,7 +65,9 @@ public class AdminController {
                                                                  @Valid @RequestBody AdminCreateRequest body) {
         requireAdmin(request);
         UserRequest createRequest = new UserRequest(body.email(), body.fullName(), body.phoneNumber(), body.password(), AccountRole.ADMIN);
-        return ResponseEntity.ok(ApiResponse.success("Admin account created", userService.create(createRequest)));
+        UserResponse created = userService.create(createRequest);
+        logAdminAction(request, "ADMIN_ACCOUNT_CREATED", created.fullName(), null, created.userId());
+        return ResponseEntity.ok(ApiResponse.success("Admin account created", created));
     }
 
     @PatchMapping("/users/{userId}")
@@ -69,7 +75,9 @@ public class AdminController {
                                                                @PathVariable UUID userId,
                                                                @Valid @RequestBody ProfileUpdateRequest body) {
         requireAdmin(request);
-        return ResponseEntity.ok(ApiResponse.success("User updated", userService.updateProfile(userId, body.fullName(), body.phoneNumber())));
+        UserResponse updated = userService.updateProfile(userId, body.fullName(), body.phoneNumber());
+        logAdminAction(request, "ACCOUNT_UPDATED", updated.fullName(), null, updated.userId());
+        return ResponseEntity.ok(ApiResponse.success("User updated", updated));
     }
 
     @PatchMapping("/users/{userId}/status")
@@ -77,7 +85,9 @@ public class AdminController {
                                                                 @PathVariable UUID userId,
                                                                 @Valid @RequestBody UserStatusRequest body) {
         requireAdmin(request);
-        return ResponseEntity.ok(ApiResponse.success("Status updated", userService.updateStatus(userId, body.status())));
+        UserResponse updated = userService.updateStatus(userId, body.status());
+        logAdminAction(request, "ACCOUNT_STATUS_UPDATED", updated.fullName(), null, updated.userId());
+        return ResponseEntity.ok(ApiResponse.success("Status updated", updated));
     }
 
     @PatchMapping("/users/{userId}/roles")
@@ -85,13 +95,17 @@ public class AdminController {
                                                               @PathVariable UUID userId,
                                                               @Valid @RequestBody UserRoleRequest body) {
         requireAdmin(request);
-        return ResponseEntity.ok(ApiResponse.success("Role updated", userService.changeRoleResponse(userId, body.role())));
+        UserResponse updated = userService.changeRoleResponse(userId, body.role());
+        logAdminAction(request, "ACCOUNT_ROLE_UPDATED", updated.fullName(), null, updated.userId());
+        return ResponseEntity.ok(ApiResponse.success("Role updated", updated));
     }
 
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(HttpServletRequest request, @PathVariable UUID userId) {
         requireAdmin(request);
+        UserResponse target = userService.findOne(userId);
         userService.softDelete(userId);
+        logAdminAction(request, "ACCOUNT_SUSPENDED", target.fullName(), null, userId);
         return ResponseEntity.ok(ApiResponse.success("User deleted", null));
     }
 
@@ -112,10 +126,10 @@ public class AdminController {
                                                                                 @PathVariable UUID requestId,
                                                                                 @RequestBody(required = false) EventRequestDecisionRequest body) {
         requireAdmin(request);
-        UUID adminUserId = jwtService.extractUserIdFromBearer(request.getHeader("Authorization"));
+        UUID adminUserId = currentAdminId(request);
         String remarks = body == null ? null : body.adminRemarks();
         return ResponseEntity.ok(ApiResponse.success("Event request approved",
-                eventCreationRequestService.approve(requestId, adminUserId, remarks)));
+                eventCreationRequestService.approve(requestId, adminUserId, currentAdminName(adminUserId), remarks)));
     }
 
     @PatchMapping("/event-requests/{requestId}/reject")
@@ -123,17 +137,18 @@ public class AdminController {
                                                                                @PathVariable UUID requestId,
                                                                                @RequestBody(required = false) EventRequestDecisionRequest body) {
         requireAdmin(request);
-        UUID adminUserId = jwtService.extractUserIdFromBearer(request.getHeader("Authorization"));
+        UUID adminUserId = currentAdminId(request);
         String remarks = body == null ? null : body.adminRemarks();
         return ResponseEntity.ok(ApiResponse.success("Event request rejected",
-                eventCreationRequestService.reject(requestId, adminUserId, remarks)));
+                eventCreationRequestService.reject(requestId, adminUserId, currentAdminName(adminUserId), remarks)));
     }
 
     @PatchMapping("/event-requests/{requestId}/upgrade-organizer")
     public ResponseEntity<ApiResponse<EventRequestResponse>> upgradeOrganizer(HttpServletRequest request, @PathVariable UUID requestId) {
         requireAdmin(request);
+        UUID adminUserId = currentAdminId(request);
         return ResponseEntity.ok(ApiResponse.success("Requester upgraded to organizer",
-                eventCreationRequestService.upgradeOrganizer(requestId)));
+                eventCreationRequestService.upgradeOrganizer(requestId, adminUserId, currentAdminName(adminUserId))));
     }
 
     private void requireAdmin(HttpServletRequest request) {
@@ -142,5 +157,17 @@ public class AdminController {
         }
     }
 
-}
+    private UUID currentAdminId(HttpServletRequest request) {
+        return jwtService.extractUserIdFromBearer(request.getHeader("Authorization"));
+    }
 
+    private String currentAdminName(UUID adminUserId) {
+        return userService.findOne(adminUserId).fullName();
+    }
+
+    private void logAdminAction(HttpServletRequest request, String action, String details, UUID eventId, UUID targetUserId) {
+        UUID adminUserId = currentAdminId(request);
+        auditLogService.log(action, details, adminUserId, currentAdminName(adminUserId), eventId, targetUserId);
+    }
+
+}
