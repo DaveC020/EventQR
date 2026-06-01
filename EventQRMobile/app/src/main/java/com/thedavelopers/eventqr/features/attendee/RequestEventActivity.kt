@@ -3,15 +3,19 @@ package com.thedavelopers.eventqr.features.attendee
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -21,6 +25,7 @@ import com.thedavelopers.eventqr.core.session.SessionManager
 import com.thedavelopers.eventqr.core.util.Validators
 import com.thedavelopers.eventqr.features.events.model.dto.EventCreationRequestDto
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -45,13 +50,16 @@ class RequestEventActivity : AppCompatActivity() {
     private lateinit var requesterNameInput: EditText
     private lateinit var contactEmailInput: EditText
     private lateinit var contactNumberInput: EditText
-    private lateinit var eventLogoInput: EditText
+    private lateinit var eventPosterPreview: ImageView
+    private lateinit var eventPosterPlaceholder: View
+    private lateinit var eventPosterStatusText: TextView
     private lateinit var reasonForRequestInput: EditText
     private lateinit var formMessageText: TextView
     private lateinit var submitProgress: ProgressBar
     private lateinit var submitButton: Button
     private var successDialog: AlertDialog? = null
     private var isSubmitting = false
+    private var selectedPosterFile: File? = null
 
     private val displayDateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
     private val zoneId: ZoneId = ZoneId.of("Asia/Manila")
@@ -60,6 +68,10 @@ class RequestEventActivity : AppCompatActivity() {
     private var endDateTimeValue: LocalDateTime? = null
     private var registrationStartDateTimeValue: LocalDateTime? = null
     private var registrationEndDateTimeValue: LocalDateTime? = null
+
+    private val posterPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { handlePosterSelected(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +85,7 @@ class RequestEventActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
         findViewById<TextView>(R.id.backText).setOnClickListener { finish() }
         findViewById<Button>(R.id.cancelButton).setOnClickListener { finish() }
+        findViewById<View>(R.id.eventPosterPicker).setOnClickListener { posterPicker.launch("image/*") }
         submitButton.setOnClickListener { submitRequest() }
 
         configureDateTimeField(startDateTimeInput, { startDateTimeValue }) { value ->
@@ -142,7 +155,9 @@ class RequestEventActivity : AppCompatActivity() {
         requesterNameInput = findViewById(R.id.requesterNameInput)
         contactEmailInput = findViewById(R.id.contactEmailInput)
         contactNumberInput = findViewById(R.id.contactNumberInput)
-        eventLogoInput = findViewById(R.id.eventLogoInput)
+        eventPosterPreview = findViewById(R.id.eventPosterPreview)
+        eventPosterPlaceholder = findViewById(R.id.eventPosterPlaceholder)
+        eventPosterStatusText = findViewById(R.id.eventPosterStatusText)
         reasonForRequestInput = findViewById(R.id.reasonForRequestInput)
         formMessageText = findViewById(R.id.formMessageText)
         submitProgress = findViewById(R.id.submitProgress)
@@ -156,15 +171,9 @@ class RequestEventActivity : AppCompatActivity() {
         lifecycleScope.launch {
             when (val result = repository.getMyProfile()) {
                 is NetworkResult.Success -> {
-                    if (requesterNameInput.textString().isBlank()) {
-                        requesterNameInput.setText(result.data.fullName)
-                    }
-                    if (contactEmailInput.textString().isBlank()) {
-                        contactEmailInput.setText(result.data.email)
-                    }
-                    if (contactNumberInput.textString().isBlank()) {
-                        contactNumberInput.setText(result.data.phoneNumber.orEmpty())
-                    }
+                    if (requesterNameInput.textString().isBlank()) requesterNameInput.setText(result.data.fullName)
+                    if (contactEmailInput.textString().isBlank()) contactEmailInput.setText(result.data.email)
+                    if (contactNumberInput.textString().isBlank()) contactNumberInput.setText(result.data.phoneNumber.orEmpty())
                 }
                 is NetworkResult.Error -> Unit
                 NetworkResult.Loading -> Unit
@@ -172,13 +181,61 @@ class RequestEventActivity : AppCompatActivity() {
         }
     }
 
+    private fun handlePosterSelected(uri: Uri) {
+        hideMessage()
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        val width = options.outWidth
+        val height = options.outHeight
+        val ratio = if (height == 0) 0.0 else width.toDouble() / height.toDouble()
+
+        if (width < 1200 || height < 675 || ratio < 1.55 || ratio > 1.90) {
+            showMessage("Event poster must be at least 1200 x 675 pixels and use a landscape 16:9-style ratio.")
+            return
+        }
+
+        val extension = contentResolver.getType(uri)?.substringAfterLast('/')?.lowercase()?.takeIf { it.length <= 5 } ?: "jpg"
+        val posterFile = File(cacheDir, "event_poster_${System.currentTimeMillis()}.$extension")
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                posterFile.outputStream().use { output -> input.copyTo(output) }
+            } ?: error("Unable to open selected image")
+        }.onSuccess {
+            selectedPosterFile = posterFile
+            eventPosterPreview.setImageURI(uri)
+            eventPosterPreview.visibility = View.VISIBLE
+            eventPosterPlaceholder.visibility = View.GONE
+            eventPosterStatusText.text = "Poster selected. It will appear on the Event Details header after approval."
+            eventPosterStatusText.setTextColor(0xFF4F46E5.toInt())
+        }.onFailure {
+            showMessage("Unable to attach selected poster. Please choose another image.")
+        }
+    }
+
     private fun submitRequest() {
         if (isSubmitting) return
         hideMessage()
-        val request = buildValidatedRequest() ?: return
+        buildValidatedRequest(eventPosterFileId = null) ?: return
         setLoading(true)
 
         lifecycleScope.launch {
+            val posterFileId = selectedPosterFile?.let { file ->
+                when (val uploadResult = repository.uploadEventPoster(file)) {
+                    is NetworkResult.Success -> uploadResult.data.fileId.toString()
+                    is NetworkResult.Error -> {
+                        setLoading(false)
+                        showMessage(uploadResult.message.ifBlank { "Could not upload event poster. Please try another image." })
+                        return@launch
+                    }
+                    NetworkResult.Loading -> null
+                }
+            }
+
+            val request = buildValidatedRequest(eventPosterFileId = posterFileId) ?: run {
+                setLoading(false)
+                return@launch
+            }
+
             when (val result = repository.createEventRequest(request)) {
                 is NetworkResult.Success -> {
                     setLoading(false)
@@ -193,7 +250,7 @@ class RequestEventActivity : AppCompatActivity() {
         }
     }
 
-    private fun buildValidatedRequest(): EventCreationRequestDto? {
+    private fun buildValidatedRequest(eventPosterFileId: String?): EventCreationRequestDto? {
         clearFieldErrors()
 
         val eventName = eventNameInput.required("Event name is required") ?: return null
@@ -274,7 +331,7 @@ class RequestEventActivity : AppCompatActivity() {
             contactEmail = contactEmail,
             contactNumber = contactNumber,
             requestedFeatures = null,
-            eventLogoUrl = eventLogoInput.optionalText(),
+            eventLogoUrl = eventPosterFileId,
             additionalNotes = null,
             reasonForRequest = reason,
         )
@@ -340,7 +397,7 @@ class RequestEventActivity : AppCompatActivity() {
             capacityInput, venueInput, startDateTimeInput, endDateTimeInput,
             registrationStartDateTimeInput, registrationEndDateTimeInput,
             requesterNameInput, contactEmailInput, contactNumberInput,
-            eventLogoInput, reasonForRequestInput,
+            reasonForRequestInput,
         ).forEach { it.error = null }
     }
 
@@ -362,10 +419,7 @@ class RequestEventActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDateTimePicker(
-        initialValue: LocalDateTime,
-        onSelected: (LocalDateTime) -> Unit,
-    ) {
+    private fun showDateTimePicker(initialValue: LocalDateTime, onSelected: (LocalDateTime) -> Unit) {
         val now = currentLocalDateTime()
         DatePickerDialog(
             this,
@@ -403,7 +457,6 @@ class RequestEventActivity : AppCompatActivity() {
     }
 
     private fun formatForDisplay(value: LocalDateTime): String = value.format(displayDateTimeFormatter)
-
     private fun currentLocalDateTime(): LocalDateTime = LocalDateTime.ofInstant(Instant.now(), zoneId)
 
     private fun EditText.required(errorMessage: String): String? {
@@ -425,8 +478,6 @@ class RequestEventActivity : AppCompatActivity() {
         }
         return value
     }
-
-    private fun EditText.optionalText(): String? = textString().takeIf { it.isNotBlank() }
 
     private fun EditText.textString(): String = text?.toString()?.trim().orEmpty()
 }
